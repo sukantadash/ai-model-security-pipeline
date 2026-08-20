@@ -1,0 +1,11 @@
+# Phase 2: Operator instances — Tekton Chains/RBAC + Service Mesh, Kuadrant, Leader Worker Set.
+# Prerequisites: Phase 1 operator subscriptions Available or Succeeded.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../instances/tekton-chains
+  - ../../instances/pipeline-rbac
+  - ../../instances/servicemesh
+  - ../../instances/rhcl
+  - ../../instances/lead-worker-set

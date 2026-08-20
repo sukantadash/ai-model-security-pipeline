@@ -1,0 +1,146 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: model-security-pipeline
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+spec:
+  description: Validate model artifacts from MinIO ingress through security tasks; promote to Model Registry on pass.
+  params:
+    - name: model-id
+      type: string
+      description: Storage key under models-ingress/ (e.g. redhatai-qwen3-8b-fp8-dynamic)
+    - name: model-path
+      type: string
+      default: /workspace/models
+    - name: model-registry-namespace
+      type: string
+      default: rhoai-model-registries
+  workspaces:
+    - name: shared-data
+      description: eval-workspace PVC mount (/models and /results subpaths)
+  taskRunSpecs:
+    - pipelineTaskName: static-scan
+      podTemplate:
+        runtimeClassName: kata
+    - pipelineTaskName: dynamic-probe
+      podTemplate:
+        runtimeClassName: kata
+  tasks:
+    - name: fetch-artifact
+      taskRef:
+        name: fetch-artifact
+      params:
+        - name: model-id
+          value: $(params.model-id)
+      workspaces:
+        - name: models
+          workspace: shared-data
+          subPath: models
+
+    - name: static-scan
+      runAfter:
+        - fetch-artifact
+      taskRef:
+        name: static-scan
+      params:
+        - name: model-path
+          value: $(params.model-path)
+      workspaces:
+        - name: models
+          workspace: shared-data
+          subPath: models
+        - name: results
+          workspace: shared-data
+          subPath: results
+
+    - name: dynamic-probe
+      runAfter:
+        - static-scan
+      taskRef:
+        name: dynamic-probe
+      workspaces:
+        - name: models
+          workspace: shared-data
+          subPath: models
+        - name: results
+          workspace: shared-data
+          subPath: results
+
+    - name: dynamic-gpu-load
+      runAfter:
+        - dynamic-probe
+      taskRef:
+        name: dynamic-gpu-load
+      workspaces:
+        - name: models
+          workspace: shared-data
+          subPath: models
+        - name: results
+          workspace: shared-data
+          subPath: results
+
+    - name: capability-eval
+      runAfter:
+        - dynamic-gpu-load
+      taskRef:
+        name: capability-eval
+      params:
+        - name: model-path
+          value: $(params.model-path)
+      workspaces:
+        - name: models
+          workspace: shared-data
+          subPath: models
+        - name: results
+          workspace: shared-data
+          subPath: results
+
+    - name: red-team
+      runAfter:
+        - capability-eval
+      taskRef:
+        name: red-team
+      params:
+        - name: model-path
+          value: $(params.model-path)
+      workspaces:
+        - name: models
+          workspace: shared-data
+          subPath: models
+        - name: results
+          workspace: shared-data
+          subPath: results
+
+    - name: score-gate
+      runAfter:
+        - red-team
+      taskRef:
+        name: score-gate
+      workspaces:
+        - name: results
+          workspace: shared-data
+          subPath: results
+
+    - name: publish-artifact
+      runAfter:
+        - score-gate
+      when:
+        - input: $(tasks.score-gate.results.passed)
+          operator: in
+          values:
+            - "true"
+      taskRef:
+        name: publish-artifact
+      params:
+        - name: model-id
+          value: $(params.model-id)
+        - name: model-registry-namespace
+          value: $(params.model-registry-namespace)
+      workspaces:
+        - name: models
+          workspace: shared-data
+          subPath: models
+        - name: results
+          workspace: shared-data
+          subPath: results

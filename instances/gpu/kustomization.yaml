@@ -1,0 +1,8 @@
+# Apply after NFD and GPU Operator subscriptions are installed (overlays/00-gpu-operators).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - nodefeaturediscovery.yaml
+  - cluster-policy.yaml
+  - driver.yaml

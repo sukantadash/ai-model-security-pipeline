@@ -1,0 +1,7 @@
+# Requires OpenShift Pipelines operator (Phase 1) to be installed first.
+apiVersion: operator.tekton.dev/v1alpha1
+kind: TektonChain
+metadata:
+  name: chain
+spec:
+  targetNamespace: openshift-pipelines

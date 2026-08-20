@@ -1,0 +1,269 @@
+# OpenShift ImageStreams + BuildConfigs for AI Model Security Pipeline tasks.
+#
+# Before applying:
+#   1. Set QUAY_ORG below (or patch via kustomize)
+#   2. Create pull/push secret: oc create secret docker-registry quay-push-secret ...
+#   3. Link secret: oc secrets link builder quay-push-secret -n model-eval
+#
+# Apply:
+#   oc apply -k ./overlays/06-builds/
+#
+# Build all images:
+#   for bc in ai-security-model-fetch ai-security-static-scan ai-security-dynamic-test \
+#             ai-security-capability-eval ai-security-red-team ai-security-score-gate; do
+#     oc start-build "$bc" --follow -n model-eval
+#   done
+
+---
+apiVersion: v1
+kind: List
+metadata:
+  name: ai-security-builds
+items:
+  # --- model-fetch: download from Hugging Face into ingress storage ---
+  - apiVersion: image.openshift.io/v1
+    kind: ImageStream
+    metadata:
+      name: ai-security-model-fetch
+      labels:
+        app.kubernetes.io/part-of: ai-model-security-pipeline
+  - apiVersion: build.openshift.io/v1
+    kind: BuildConfig
+    metadata:
+      name: ai-security-model-fetch
+      labels:
+        app.kubernetes.io/part-of: ai-model-security-pipeline
+    spec:
+      output:
+        to:
+          kind: ImageStreamTag
+          name: ai-security-model-fetch:latest
+      source:
+        type: Git
+        git:
+          uri: https://github.com/sukantadash/ai-model-security-pipeline.git
+          ref: main
+        contextDir: builds/model-fetch
+      strategy:
+        type: Docker
+        dockerStrategy:
+          dockerfilePath: Dockerfile
+      triggers:
+        - type: ConfigChange
+
+  # --- static-scan: ModelAudit, Fickling, ClamAV, Syft ---
+  - apiVersion: image.openshift.io/v1
+    kind: ImageStream
+    metadata:
+      name: ai-security-static-scan
+      labels:
+        app.kubernetes.io/part-of: ai-model-security-pipeline
+  - apiVersion: build.openshift.io/v1
+    kind: BuildConfig
+    metadata:
+      name: ai-security-static-scan
+      labels:
+        app.kubernetes.io/part-of: ai-model-security-pipeline
+    spec:
+      output:
+        to:
+          kind: ImageStreamTag
+          name: ai-security-static-scan:latest
+      source:
+        type: Git
+        git:
+          uri: https://github.com/sukantadash/ai-model-security-pipeline.git
+          ref: main
+        contextDir: builds/static-scan
+      strategy:
+        type: Docker
+        dockerStrategy:
+          dockerfilePath: Dockerfile
+      triggers:
+        - type: ConfigChange
+
+  # --- dynamic-test: vLLM load probe (GPU) ---
+  - apiVersion: image.openshift.io/v1
+    kind: ImageStream
+    metadata:
+      name: ai-security-dynamic-test
+      labels:
+        app.kubernetes.io/part-of: ai-model-security-pipeline
+  - apiVersion: build.openshift.io/v1
+    kind: BuildConfig
+    metadata:
+      name: ai-security-dynamic-test
+      labels:
+        app.kubernetes.io/part-of: ai-model-security-pipeline
+    spec:
+      output:
+        to:
+          kind: ImageStreamTag
+          name: ai-security-dynamic-test:latest
+      source:
+        type: Git
+        git:
+          uri: https://github.com/sukantadash/ai-model-security-pipeline.git
+          ref: main
+        contextDir: builds/dynamic-test
+      strategy:
+        type: Docker
+        dockerStrategy:
+          dockerfilePath: Dockerfile
+      triggers:
+        - type: ConfigChange
+
+  # --- capability-eval: lm-eval-harness, DeepEval ---
+  - apiVersion: image.openshift.io/v1
+    kind: ImageStream
+    metadata:
+      name: ai-security-capability-eval
+      labels:
+        app.kubernetes.io/part-of: ai-model-security-pipeline
+  - apiVersion: build.openshift.io/v1
+    kind: BuildConfig
+    metadata:
+      name: ai-security-capability-eval
+      labels:
+        app.kubernetes.io/part-of: ai-model-security-pipeline
+    spec:
+      output:
+        to:
+          kind: ImageStreamTag
+          name: ai-security-capability-eval:latest
+      source:
+        type: Git
+        git:
+          uri: https://github.com/sukantadash/ai-model-security-pipeline.git
+          ref: main
+        contextDir: builds/capability-eval
+      strategy:
+        type: Docker
+        dockerStrategy:
+          dockerfilePath: Dockerfile
+      triggers:
+        - type: ConfigChange
+
+  # --- red-team: Garak, Promptfoo, LLM Guard ---
+  - apiVersion: image.openshift.io/v1
+    kind: ImageStream
+    metadata:
+      name: ai-security-red-team
+      labels:
+        app.kubernetes.io/part-of: ai-model-security-pipeline
+  - apiVersion: build.openshift.io/v1
+    kind: BuildConfig
+    metadata:
+      name: ai-security-red-team
+      labels:
+        app.kubernetes.io/part-of: ai-model-security-pipeline
+    spec:
+      output:
+        to:
+          kind: ImageStreamTag
+          name: ai-security-red-team:latest
+      source:
+        type: Git
+        git:
+          uri: https://github.com/sukantadash/ai-model-security-pipeline.git
+          ref: main
+        contextDir: builds/red-team
+      strategy:
+        type: Docker
+        dockerStrategy:
+          dockerfilePath: Dockerfile
+      triggers:
+        - type: ConfigChange
+
+  # --- score-gate: aggregate scan JSON, pass/fail ---
+  - apiVersion: image.openshift.io/v1
+    kind: ImageStream
+    metadata:
+      name: ai-security-score-gate
+      labels:
+        app.kubernetes.io/part-of: ai-model-security-pipeline
+  - apiVersion: build.openshift.io/v1
+    kind: BuildConfig
+    metadata:
+      name: ai-security-score-gate
+      labels:
+        app.kubernetes.io/part-of: ai-model-security-pipeline
+    spec:
+      output:
+        to:
+          kind: ImageStreamTag
+          name: ai-security-score-gate:latest
+      source:
+        type: Git
+        git:
+          uri: https://github.com/sukantadash/ai-model-security-pipeline.git
+          ref: main
+        contextDir: builds/score-gate
+      strategy:
+        type: Docker
+        dockerStrategy:
+          dockerfilePath: Dockerfile
+      triggers:
+        - type: ConfigChange
+
+  # --- publish: MinIO promote + Model Registry registration ---
+  - apiVersion: image.openshift.io/v1
+    kind: ImageStream
+    metadata:
+      name: ai-security-publish
+      labels:
+        app.kubernetes.io/part-of: ai-model-security-pipeline
+  - apiVersion: build.openshift.io/v1
+    kind: BuildConfig
+    metadata:
+      name: ai-security-publish
+      labels:
+        app.kubernetes.io/part-of: ai-model-security-pipeline
+    spec:
+      output:
+        to:
+          kind: ImageStreamTag
+          name: ai-security-publish:latest
+      source:
+        type: Git
+        git:
+          uri: https://github.com/sukantadash/ai-model-security-pipeline.git
+          ref: main
+        contextDir: builds/publish
+      strategy:
+        type: Docker
+        dockerStrategy:
+          dockerfilePath: Dockerfile
+      triggers:
+        - type: ConfigChange
+
+  # --- dynamic-gpu: GPU weight load probe (outside Kata) ---
+  - apiVersion: image.openshift.io/v1
+    kind: ImageStream
+    metadata:
+      name: ai-security-dynamic-gpu
+      labels:
+        app.kubernetes.io/part-of: ai-model-security-pipeline
+  - apiVersion: build.openshift.io/v1
+    kind: BuildConfig
+    metadata:
+      name: ai-security-dynamic-gpu
+      labels:
+        app.kubernetes.io/part-of: ai-model-security-pipeline
+    spec:
+      output:
+        to:
+          kind: ImageStreamTag
+          name: ai-security-dynamic-gpu:latest
+      source:
+        type: Git
+        git:
+          uri: https://github.com/sukantadash/ai-model-security-pipeline.git
+          ref: main
+        contextDir: builds/dynamic-gpu
+      strategy:
+        type: Docker
+        dockerStrategy:
+          dockerfilePath: Dockerfile
+      triggers:
+        - type: ConfigChange

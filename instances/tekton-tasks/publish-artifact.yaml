@@ -1,0 +1,41 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: publish-artifact
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+spec:
+  description: Promote verified model to MinIO and register in RHOAI Model Registry.
+  params:
+    - name: image
+      type: string
+      default: image-registry.openshift-image-registry.svc:5000/model-eval/ai-security-publish:latest
+    - name: model-id
+      type: string
+    - name: model-registry-namespace
+      type: string
+      default: rhoai-model-registries
+  results:
+    - name: published-uri
+    - name: model-version
+  workspaces:
+    - name: models
+    - name: results
+  steps:
+    - name: publish
+      image: $(params.image)
+      envFrom:
+        - secretRef:
+            name: minio-s3
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        export MODEL_ID="$(params.model-id)"
+        export MODEL_PATH="$(workspaces.models.path)"
+        export RESULTS_DIR="$(workspaces.results.path)"
+        export MODEL_REGISTRY_NAMESPACE="$(params.model-registry-namespace)"
+        export PIPELINE_RUN_ID="${PIPELINE_RUN_ID:-$(params.model-id)}"
+        URI=$(/scripts/publish-to-registry.sh)
+        echo -n "${URI}" > "$(results.published-uri.path)"
+        VERSION=$(python3 -c "import json; print(json.load(open('${RESULTS_DIR}/publish.json'))['model_version'])")
+        echo -n "${VERSION}" > "$(results.model-version.path)"

@@ -1,0 +1,32 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: score-gate
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+spec:
+  description: Aggregate task results into a pass/fail gate.
+  params:
+    - name: image
+      type: string
+      default: image-registry.openshift-image-registry.svc:5000/model-eval/ai-security-score-gate:latest
+  results:
+    - name: passed
+      description: "true when all scans pass"
+    - name: score-file
+  workspaces:
+    - name: results
+  steps:
+    - name: aggregate
+      image: $(params.image)
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        OUT="$(workspaces.results.path)/score.json"
+        if python /scripts/aggregate-results.py "$(workspaces.results.path)" "${OUT}"; then
+          echo -n "true" > "$(results.passed.path)"
+        else
+          echo -n "false" > "$(results.passed.path)"
+          exit 1
+        fi
+        echo -n "${OUT}" > "$(results.score-file.path)"

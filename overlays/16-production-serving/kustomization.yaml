@@ -1,0 +1,8 @@
+# Phase 15: Deploy verified LLMInferenceService resources to model-prod.
+# Prerequisites: Overlays 11–15 (RHOAI, gateway, hardware profile); see instances/model-prod/README.md.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../instances/model-prod/llm-models
+  - ../../instances/model-prod/serving-rbac

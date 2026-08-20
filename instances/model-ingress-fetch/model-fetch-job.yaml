@@ -1,0 +1,46 @@
+# Download RedHatAI/Qwen3-8B-FP8-dynamic from Hugging Face into MinIO models-ingress.
+#
+# Usage:
+#   oc apply -f instances/model-ingress-fetch/model-fetch-job.yaml
+#   oc wait --for=condition=complete job/model-fetch -n model-ingress --timeout=7200s
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: model-fetch
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+spec:
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: model-fetch
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: fetch
+          image: image-registry.openshift-image-registry.svc:5000/model-eval/ai-security-model-fetch:latest
+          envFrom:
+            - secretRef:
+                name: minio-s3
+            - secretRef:
+                name: hf-token
+                optional: true
+          env:
+            - name: HF_REPO
+              value: RedHatAI/Qwen3-8B-FP8-dynamic
+            - name: MODEL_ID
+              value: redhatai-qwen3-8b-fp8-dynamic
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              /scripts/download-hf-model.sh "${HF_REPO}" /tmp/models "${MODEL_ID}"
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp/models
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 200Gi

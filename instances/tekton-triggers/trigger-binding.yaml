@@ -1,0 +1,12 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: model-upload-binding
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+spec:
+  params:
+    - name: model-id
+      value: $(body.model_id)
+    - name: model-path
+      value: /workspace/models

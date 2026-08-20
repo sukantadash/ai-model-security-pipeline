@@ -1,0 +1,7 @@
+# Phase 6: Tekton Tasks for the model security pipeline.
+# Prerequisites: Phase 5 images built (or tasks will ImagePullBackOff).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../instances/tekton-tasks

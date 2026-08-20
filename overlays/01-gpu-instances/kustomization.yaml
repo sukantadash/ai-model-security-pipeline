@@ -1,0 +1,6 @@
+# Phase 0b: NFD + GPU Operator CRs. Wait for Phase 0a subscriptions before applying.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../instances/gpu

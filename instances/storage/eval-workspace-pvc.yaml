@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: eval-workspace
+  namespace: model-eval
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+    storage.platform/role: pipeline-workspace
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi

@@ -1,0 +1,8 @@
+# Phase 3: Three security zones — namespaces and NetworkPolicies.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../instances/model-ingress
+  - ../../instances/model-eval
+  - ../../instances/model-prod

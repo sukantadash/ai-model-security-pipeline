@@ -1,0 +1,6 @@
+# Phase 11: OdhDashboardConfig — apply after DSC is Ready (Phase 10).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../instances/rhoai-dashboard

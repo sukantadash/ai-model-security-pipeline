@@ -1,0 +1,7 @@
+# Phase 7: model-security-pipeline Pipeline definition.
+# Prerequisites: Phase 6 tasks applied.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../instances/tekton-pipeline

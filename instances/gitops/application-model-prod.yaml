@@ -1,0 +1,26 @@
+# Argo CD Application — syncs verified model manifests to model-prod.
+# Edit spec.source.repoURL to your fork before applying overlay 11.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: model-prod-verified-models
+  namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io/argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/sukantadash/ai-model-security-pipeline.git
+    targetRevision: main
+    path: instances/model-prod/llm-models
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: model-prod
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=false
+    automated:
+      prune: true
+      selfHeal: true

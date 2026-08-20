@@ -1,0 +1,14 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: model-security-listener
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+spec:
+  serviceAccountName: model-eval-pipeline
+  triggers:
+    - name: model-upload-trigger
+      bindings:
+        - ref: model-upload-binding
+      templates:
+        - ref: model-security-template

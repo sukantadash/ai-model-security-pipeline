@@ -1,0 +1,7 @@
+# Phase 12: Inference gateway + TLS.
+# Update instances/gateway/gateway.yaml hostname and tlspolicy.yaml issuer before applying.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../instances/gateway

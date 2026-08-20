@@ -1,0 +1,10 @@
+# Local secrets — use *.template files
+quay-secret.yaml
+minio-s3-secret.yaml
+
+# OS / editor
+.DS_Store
+*.swp
+*.swo
+.idea/
+.vscode/

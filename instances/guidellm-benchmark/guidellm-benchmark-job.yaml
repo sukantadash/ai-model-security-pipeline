@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: guidellm-benchmark
+  namespace: demo-llm
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      containers:
+      - name: guidellm
+        image: ghcr.io/vllm-project/guidellm:latest
+        env:
+          - name: GUIDELLM_TARGET
+            value: "https://inference-gateway.apps.cluster-bvbpt.bvbpt.sandbox5358.opentlc.com/demo-llm/qwen"
+          - name: GUIDELLM_PROFILE
+            value: throughput
+          - name: GUIDELLM_RATE
+            value: "20"  # max concurrent streams (required by GuideLLM >=0.5 for throughput profile)
+          - name: GUIDELLM_MAX_SECONDS
+            value: "60"
+          # 20 distinct 2048-token prefixes (simulating 20 different large documents/chats)
+          - name: GUIDELLM_DATA
+            value: "prefix_tokens=2048,prefix_count=20,prompt_tokens=100,output_tokens=50"
+          - name: HF_HOME
+            value: /tmp/hf-cache
+          - name: TRANSFORMERS_CACHE
+            value: /tmp/hf-cache
+          - name: XDG_CACHE_HOME
+            value: /tmp
+        volumeMounts:
+          - name: cache
+            mountPath: /tmp/hf-cache
+          - name: results
+            mountPath: /results
+      volumes:
+        - name: cache
+          emptyDir: {}
+        - name: results
+          emptyDir: {}

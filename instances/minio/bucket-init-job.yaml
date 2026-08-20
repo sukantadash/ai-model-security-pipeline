@@ -1,0 +1,32 @@
+# Creates cluster-wide model buckets. Re-run safely (mc mb ignores existing buckets).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-bucket-init
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mc
+          image: quay.io/minio/mc:RELEASE.2024-12-18T13-15-44Z
+          envFrom:
+            - secretRef:
+                name: minio-root
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -euo pipefail
+              mc alias set local http://minio.minio-system.svc:9000 "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"
+              for b in models-ingress models-eval models-verified attestations; do
+                mc mb --ignore-existing "local/${b}"
+              done
+              mc anonymous set none local/models-ingress
+              mc anonymous set none local/models-eval
+              mc anonymous set none local/models-verified
+              mc anonymous set none local/attestations
+              mc ls local

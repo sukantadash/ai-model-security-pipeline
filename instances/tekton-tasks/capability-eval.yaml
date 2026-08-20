@@ -1,0 +1,39 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: capability-eval
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+spec:
+  description: Benchmark quality and safety baselines.
+  params:
+    - name: image
+      type: string
+      default: image-registry.openshift-image-registry.svc:5000/model-eval/ai-security-capability-eval:latest
+    - name: model-path
+      type: string
+      default: /workspace/models
+  results:
+    - name: result-file
+  workspaces:
+    - name: models
+    - name: results
+  podTemplate:
+    nodeSelector:
+      nvidia.com/gpu.present: "true"
+    tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+  steps:
+    - name: evaluate
+      image: $(params.image)
+      resources:
+        limits:
+          nvidia.com/gpu: "1"
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        OUT="$(workspaces.results.path)/capability.json"
+        /scripts/run-capability-eval.sh "$(params.model-path)" "${OUT}"
+        echo -n "${OUT}" > "$(results.result-file.path)"

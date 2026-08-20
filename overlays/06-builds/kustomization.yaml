@@ -1,0 +1,9 @@
+# Phase 5: ImageStreams + BuildConfigs for scanner task images.
+# Edit builds/build.yaml Git URI before applying.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: model-eval
+
+resources:
+  - ../../builds

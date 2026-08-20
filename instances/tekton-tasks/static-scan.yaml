@@ -1,0 +1,30 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: static-scan
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+spec:
+  description: Static security scanning without executing model code.
+  params:
+    - name: image
+      type: string
+      default: image-registry.openshift-image-registry.svc:5000/model-eval/ai-security-static-scan:latest
+    - name: model-path
+      type: string
+      default: /workspace/models
+  results:
+    - name: result-file
+      description: Path to static scan JSON
+  workspaces:
+    - name: models
+    - name: results
+  steps:
+    - name: scan
+      image: $(params.image)
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        OUT="$(workspaces.results.path)/static.json"
+        /scripts/run-static-scan.sh "$(params.model-path)" "${OUT}"
+        echo -n "${OUT}" > "$(results.result-file.path)"

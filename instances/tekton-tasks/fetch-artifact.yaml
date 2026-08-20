@@ -1,0 +1,38 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: fetch-artifact
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+spec:
+  description: Sync model artifacts from MinIO models-ingress into the pipeline workspace.
+  params:
+    - name: image
+      type: string
+      default: image-registry.openshift-image-registry.svc:5000/model-eval/ai-security-model-fetch:latest
+    - name: model-id
+      type: string
+    - name: model-path
+      type: string
+      default: /workspace/models
+  results:
+    - name: model-path
+  workspaces:
+    - name: models
+  steps:
+    - name: sync
+      image: $(params.image)
+      envFrom:
+        - secretRef:
+            name: minio-s3
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        source /scripts/s3-common.sh
+        DEST="$(workspaces.models.path)"
+        s3_sync_from_ingress "$(params.model-id)" "${DEST}"
+        if [[ ! -d "${DEST}" ]] || [[ -z "$(ls -A "${DEST}" 2>/dev/null || true)" ]]; then
+          echo "no model files after sync for $(params.model-id)" >&2
+          exit 1
+        fi
+        echo -n "${DEST}" > "$(results.model-path.path)"

@@ -1,0 +1,30 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: model-security-template
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+spec:
+  params:
+    - name: model-id
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1
+      kind: PipelineRun
+      metadata:
+        generateName: model-security-
+      spec:
+        pipelineRef:
+          name: model-security-pipeline
+        taskRunTemplate:
+          serviceAccountName: model-eval-pipeline
+        params:
+          - name: model-id
+            value: $(tt.params.model-id)
+          - name: model-path
+            value: /workspace/models
+          - name: model-registry-namespace
+            value: rhoai-model-registries
+        workspaces:
+          - name: shared-data
+            persistentVolumeClaim:
+              claimName: eval-workspace

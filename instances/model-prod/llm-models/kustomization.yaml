@@ -1,0 +1,8 @@
+# Verified models promoted to production after pipeline pass.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: model-prod
+
+resources:
+  - qwen3-8b-fp8-verified.yaml

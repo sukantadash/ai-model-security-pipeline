@@ -1,0 +1,14 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: model-eval-pipeline
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: model-eval-pipeline
+subjects:
+  - kind: ServiceAccount
+    name: model-eval-pipeline
+    namespace: model-eval

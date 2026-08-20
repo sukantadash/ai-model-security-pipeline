@@ -1,0 +1,8 @@
+# Phase 0a: NFD + NVIDIA GPU Operator subscriptions.
+# Prerequisites: GPU worker nodes (infra/prereqs/ocp-gpu-setup/machine-set/).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../operators/nfd
+  - ../../operators/gpu-operator

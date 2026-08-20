@@ -1,0 +1,15 @@
+# Phase 8: EventListener + TriggerTemplate for ingress upload events.
+# Prerequisites: Phase 7 pipeline applied; OpenShift Pipelines Triggers controller running.
+#
+# After apply, expose webhook:
+#   oc get route el-model-security-listener -n model-eval
+#
+# Test trigger:
+#   curl -X POST "$(oc get route el-model-security-listener -n model-eval -o jsonpath='{.spec.host}')" \
+#     -H 'Content-Type: application/json' \
+#     -d '{"model_id":"qwen3-0.6b"}'
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../instances/tekton-triggers

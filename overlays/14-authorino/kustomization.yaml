@@ -1,0 +1,7 @@
+# Phase 13: Authorino for gateway authorization.
+# Annotate Authorino svc for TLS after operator creates it (see script.sh).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../instances/authorino

@@ -1,0 +1,7 @@
+# Phase 9: Tekton Chains configuration for SLSA signing.
+# Prerequisites: Phase 2 TektonChain CR installed.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../instances/tekton-chains-config

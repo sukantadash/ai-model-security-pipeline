@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: model-eval
+
+resources:
+  - fetch-artifact.yaml
+  - static-scan.yaml
+  - dynamic-probe.yaml
+  - dynamic-gpu-load.yaml
+  - capability-eval.yaml
+  - red-team.yaml
+  - score-gate.yaml
+  - publish-artifact.yaml

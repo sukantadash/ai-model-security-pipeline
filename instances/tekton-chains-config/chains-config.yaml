@@ -1,0 +1,19 @@
+# Chains signing defaults for model-security pipeline artifacts.
+# Requires TektonChain CR from overlay 03-operator-instances (Phase 2).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chains-config
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+data:
+  sign_oci_artifacts: "true"
+  sign_pipelines: "true"
+  sign_tasks: "true"
+  sign_taskruns: "true"
+  sign_pipelineruns: "true"
+  transparency_enabled: "true"
+  # Update to your Quay/Sigstore endpoint when external transparency is configured.
+  notes: |
+    Default in-cluster x509 signing is enabled by TektonChain.
+    Configure artifact storage in Quay verified-models repo after publish-artifact task.

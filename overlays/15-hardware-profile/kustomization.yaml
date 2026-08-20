@@ -1,0 +1,6 @@
+# Phase 14: GPU hardware profile for LLMInferenceService scheduling.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../instances/hardware-profile

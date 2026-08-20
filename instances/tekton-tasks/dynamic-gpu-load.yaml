@@ -1,0 +1,36 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: dynamic-gpu-load
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+spec:
+  description: GPU weight load probe outside Kata (restricted SCC + GPU node).
+  params:
+    - name: image
+      type: string
+      default: image-registry.openshift-image-registry.svc:5000/model-eval/ai-security-dynamic-gpu:latest
+    - name: model-path
+      type: string
+      default: /workspace/models
+  workspaces:
+    - name: models
+    - name: results
+  podTemplate:
+    nodeSelector:
+      nvidia.com/gpu.present: "true"
+    tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+  steps:
+    - name: gpu-load
+      image: $(params.image)
+      resources:
+        limits:
+          nvidia.com/gpu: "1"
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        OUT="$(workspaces.results.path)/dynamic-gpu.json"
+        /scripts/run-dynamic-gpu-load.sh "$(workspaces.models.path)" "${OUT}"

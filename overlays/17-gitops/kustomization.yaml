@@ -1,0 +1,7 @@
+# Phase 16: Argo CD Application for GitOps promotion to model-prod.
+# Prerequisites: OpenShift GitOps operator (Phase 1), repo URL configured.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../instances/gitops

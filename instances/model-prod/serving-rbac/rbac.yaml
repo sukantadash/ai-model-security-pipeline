@@ -1,0 +1,27 @@
+# Test ServiceAccount for gateway smoke tests in model-prod.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: test-user
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: llm-inferenceservice-reader
+rules:
+  - apiGroups: ["serving.kserve.io"]
+    resources: ["llminferenceservices"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: llm-inferenceservice-reader-binding
+subjects:
+  - kind: ServiceAccount
+    name: test-user
+    namespace: model-prod
+roleRef:
+  kind: Role
+  name: llm-inferenceservice-reader
+  apiGroup: rbac.authorization.k8s.io
