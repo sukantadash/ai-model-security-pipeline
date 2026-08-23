@@ -1,7 +1,9 @@
 # Copy from minio-s3-secret.yaml.template into each zone namespace.
 #
-# Quay (scanner images only):
+# Quay (pull registry.redhat.io / base images during build):
 #   cp quay-secret.yaml.template quay-secret.yaml  # edit credentials
+#   oc apply -f quay-secret.yaml -n build-image
+#   oc secrets link builder sudash-modelpipeline-pull-secret -n build-image
 #   oc apply -f quay-secret.yaml -n model-ingress
 #   oc apply -f quay-secret.yaml -n model-eval
 #   oc apply -f quay-secret.yaml -n model-prod

@@ -1,0 +1,14 @@
+# Installs RuntimeClass "kata" on eligible worker nodes (nodes may reboot — allow 10–60+ min).
+# Prerequisites: Sandboxed Containers operator CSV Succeeded in openshift-sandboxed-containers-operator.
+apiVersion: kataconfiguration.openshift.io/v1
+kind: KataConfig
+metadata:
+  name: cluster-kataconfig
+spec:
+  checkNodeEligibility: true
+  enablePeerPods: false
+  logLevel: info
+  # Optional: limit kata to labeled nodes only (uncomment and label workers first):
+  # kataConfigPoolSelector:
+  #   matchLabels:
+  #     node.openshift.io/kata: "true"

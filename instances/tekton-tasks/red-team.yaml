@@ -9,7 +9,7 @@ spec:
   params:
     - name: image
       type: string
-      default: image-registry.openshift-image-registry.svc:5000/model-eval/ai-security-red-team:latest
+      default: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-red-team:latest
     - name: model-path
       type: string
       default: /workspace/models

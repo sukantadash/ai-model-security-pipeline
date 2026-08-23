@@ -1,0 +1,9 @@
+# Sandboxed Containers does NOT support AllNamespaces — must use dedicated namespace.
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: sandboxed-containers-operator-group
+  namespace: openshift-sandboxed-containers-operator
+spec:
+  targetNamespaces:
+    - openshift-sandboxed-containers-operator

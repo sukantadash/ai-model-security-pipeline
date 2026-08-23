@@ -1,11 +1,12 @@
-# Phase 2: Operator instances — Tekton Chains/RBAC + Service Mesh, Kuadrant, Leader Worker Set.
-# Prerequisites: Phase 1 operator subscriptions Available or Succeeded.
+# Phase 2: Operator instances — Tekton Chains, Service Mesh, Kuadrant, Leader Worker Set, Kata.
+# Prerequisites: Phase 1 operator CSVs Succeeded (Sandboxed Containers in openshift-sandboxed-containers-operator).
+# Note: pipeline-rbac lives in overlay 04 (requires model-eval namespace).
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
   - ../../instances/tekton-chains
-  - ../../instances/pipeline-rbac
   - ../../instances/servicemesh
   - ../../instances/rhcl
   - ../../instances/lead-worker-set
+  - ../../instances/sandboxed-containers

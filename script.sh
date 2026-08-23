@@ -17,39 +17,47 @@ cd "$(dirname "$0")"
 #
 # Steps 2–4 — from repo root:
 #   oc apply -k ./overlays/00-gpu-operators/
-#   oc wait --for=condition=Available subscription/nfd -n openshift-nfd --timeout=600s
-#   oc wait --for=condition=Available subscription/gpu-operator-certified -n nvidia-gpu-operator --timeout=600s
+#   # Wait for CSV Succeeded (subscription/Available never appears on some clusters):
+#   oc wait --for=jsonpath='{.status.phase}'=Succeeded clusterserviceversion -n openshift-nfd --timeout=600s
+#   oc wait --for=jsonpath='{.status.phase}'=Succeeded clusterserviceversion -n nvidia-gpu-operator --timeout=600s
 #   oc apply -k ./overlays/01-gpu-instances/
 #
 # Verify:
 #   oc get nodes -l nvidia.com/gpu.present=true
-#   oc get clusterpolicy cluster-policy -n nvidia-gpu-operator
+#   oc get clusterpolicy gpu-cluster-policy -n nvidia-gpu-operator
 
 # =============================================================================
 # Phase 1: Operators (Pipelines, GitOps, Service Mesh, RHOAI, …)
 # =============================================================================
 # oc apply -k ./overlays/02-operators/
 #
-# Wait for subscriptions (includes Sandboxed Containers for Kata):
+# Wait for CSV Succeeded (includes Sandboxed Containers for Kata — dedicated namespace):
 #   oc get csv -A | grep -E 'pipelines|gitops|rhods|servicemesh|kuadrant|sandboxed'
-#   oc get runtimeclass kata   # after Sandboxed Containers operator is ready
+#   oc get csv -n openshift-sandboxed-containers-operator
+#   oc get runtimeclass kata   # after KataConfig is applied (Phase 2 or manual)
 #
 # Manual: approve any Manual InstallPlans if required
 #   oc get installplan -A
 #   oc patch installplan <name> -n <ns> --type merge -p '{"spec":{"approved":true}}'
 
 # =============================================================================
-# Phase 2: Operator instances (Tekton Chains, pipeline RBAC, Service Mesh, …)
-# =============================================================================
-# oc apply -k ./overlays/03-operator-instances/
-
-# =============================================================================
-# Phase 3: Three zones — namespaces, NetworkPolicies
+# Phase 2: Three zones — namespaces, NetworkPolicies, pipeline RBAC
 # =============================================================================
 # oc apply -k ./overlays/04-zones/
 #
 # Verify:
 #   oc get ns model-ingress model-eval model-prod
+#   oc get sa model-eval-pipeline -n model-eval
+
+
+# =============================================================================
+# Phase 3: Operator instances (Tekton Chains, Service Mesh, KataConfig, …)
+# =============================================================================
+# oc apply -k ./overlays/03-operator-instances/
+#
+# KataConfig triggers worker node reboots (10–60+ min). Verify before Tekton pipeline runs:
+#   oc describe kataconfig cluster-kataconfig
+#   oc get runtimeclass kata
 
 # =============================================================================
 # Phase 4: MinIO + eval workspace PVC
@@ -65,9 +73,10 @@ cd "$(dirname "$0")"
 #     oc apply -f minio-s3-secret.yaml -n "${ns}"
 #   done
 #   cp quay-secret.yaml.template quay-secret.yaml             # scanner images only
+#   oc apply -f quay-secret.yaml -n build-image
+#   oc secrets link builder sudash-modelpipeline-pull-secret -n build-image
 #   oc apply -f quay-secret.yaml -n model-ingress
 #   oc apply -f quay-secret.yaml -n model-eval
-#   oc secrets link builder sudash-modelpipeline-pull-secret -n model-eval
 #
 # Hugging Face token (ingress only):
 #   oc create secret generic hf-token -n model-ingress \
@@ -77,16 +86,14 @@ cd "$(dirname "$0")"
 # Phase 5: Build custom scanner images
 # =============================================================================
 # oc apply -k ./overlays/06-builds/
+# oc apply -f quay-secret.yaml -n build-image
+# oc secrets link builder sudash-modelpipeline-pull-secret -n build-image
 #
-# Build each image (Quay hosts scanner images only):
-#   oc start-build ai-security-model-fetch --follow -n model-eval
-#   oc start-build ai-security-static-scan --follow -n model-eval
-#   oc start-build ai-security-dynamic-test --follow -n model-eval
-#   oc start-build ai-security-dynamic-gpu --follow -n model-eval
-#   oc start-build ai-security-capability-eval --follow -n model-eval
-#   oc start-build ai-security-red-team --follow -n model-eval
-#   oc start-build ai-security-score-gate --follow -n model-eval
-#   oc start-build ai-security-publish --follow -n model-eval
+# for bc in model-fetch static-scan dynamic-test dynamic-gpu capability-eval red-team score-gate publish; do
+#   oc start-build "ai-security-${bc}" --from-dir="builds/${bc}" --follow -n build-image
+# done
+#
+# oc get istag -n build-image | grep ai-security
 
 # =============================================================================
 # Phase 6: Tekton Tasks

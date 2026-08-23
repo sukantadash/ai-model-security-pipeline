@@ -127,6 +127,20 @@ Loads model weights into memory within Kata Container VMs. Monitors system calls
 
 Requires OpenShift RuntimeClass configured for VFIO GPU passthrough when GPU validation is needed.
 
+Dynamic testing is a **hard sandbox gate**, not a weighted term in the composite score. The Tekton Task runs with `runtimeClassName: kata` so the load happens inside a QEMU/KVM guest kernel, not a runc/CRI-O pod on the worker. A monitoring sidecar (or host Falco/Tetragon agent) watches that guest while a Python vLLM wrapper loads weights and performs a basic inference probe. GPU validation is optional: when required, the same RuntimeClass is configured for VFIO passthrough so the untrusted process sees the GPU only inside the VM.
+
+| Piece | Design |
+|-------|--------|
+| **Isolation** | Kata Containers (OpenShift Sandboxed Containers) — VM kernel, not a normal pod |
+| **Tekton pattern** | RuntimeClass Task plus a monitoring sidecar |
+| **Load engine** | vLLM probe (Python wrapper loads weights and checks basic inference) |
+| **Behavior watch** | Falco or Tetragon on syscalls, network egress, unauthorized activity |
+| **Resource watch** | Kepler for CPU/GPU/power metrics |
+| **GPU** | Optional VFIO passthrough via RuntimeClass when GPU validation is needed |
+| **Network** | `model-eval` has no default public egress; NetworkPolicies + restricted SCC |
+
+**Fail conditions (design):** socket creation or raw bind, execution of `/bin/sh` or `/bin/bash`, unauthorized filesystem writes, abnormal CPU/GPU/memory versus baseline, load or inference failure, and any attempt to egress outside approved endpoints. A passing probe writes `dynamic.json` for the score-gate Task; a failure fails the PipelineRun and keeps the artifact in ingress storage.
+
 #### Capability Evaluation
 
 Assesses baseline quality, logic, and safety benchmarks (MMLU, GSM8K, HumanEval) and detects output distribution anomalies.

@@ -10,5 +10,5 @@ spec:
     - name: model-upload-trigger
       bindings:
         - ref: model-upload-binding
-      templates:
-        - ref: model-security-template
+      template:
+        ref: model-security-template

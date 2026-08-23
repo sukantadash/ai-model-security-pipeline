@@ -2,9 +2,14 @@
 quay-secret.yaml
 minio-s3-secret.yaml
 
+# Python
+__pycache__/
+*.pyc
+
 # OS / editor
 .DS_Store
 *.swp
 *.swo
 .idea/
 .vscode/
+reference/

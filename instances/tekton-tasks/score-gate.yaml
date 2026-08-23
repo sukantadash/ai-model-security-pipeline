@@ -9,7 +9,7 @@ spec:
   params:
     - name: image
       type: string
-      default: image-registry.openshift-image-registry.svc:5000/model-eval/ai-security-score-gate:latest
+      default: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-score-gate:latest
   results:
     - name: passed
       description: "true when all scans pass"

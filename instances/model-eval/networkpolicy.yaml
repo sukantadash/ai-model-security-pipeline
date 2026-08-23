@@ -1,5 +1,6 @@
 # Evaluation zone: isolated from production; may reach ingress (artifact sync), internal registry, and Quay.
 # Per HLD §4.2 / IMPLEMENTATION-PLAN §3: no general public internet — Quay + cluster services only.
+# Image builds run in build-image namespace (no NetworkPolicy there).
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

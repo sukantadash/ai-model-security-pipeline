@@ -19,7 +19,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: fetch
-          image: image-registry.openshift-image-registry.svc:5000/model-eval/ai-security-model-fetch:latest
+          image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-model-fetch:latest
           envFrom:
             - secretRef:
                 name: minio-s3

@@ -12,7 +12,12 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: mc
-          image: quay.io/minio/mc:RELEASE.2024-12-18T13-15-44Z
+          # mc tags on quay.io differ from minio/minio — pin a tag that exists on Quay.
+          image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+          env:
+            # OpenShift runs with random UID — /.mc is not writable.
+            - name: MC_CONFIG_DIR
+              value: /tmp/.mc
           envFrom:
             - secretRef:
                 name: minio-root
