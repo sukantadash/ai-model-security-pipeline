@@ -30,11 +30,29 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: openshift-dns
+          podSelector:
+            matchLabels:
+              dns.operator.openshift.io/daemonset-dns: default
+      ports:
+        - protocol: UDP
+          port: dns
+        - protocol: TCP
+          port: dns-tcp
+    - to:
+        - ipBlock:
+            cidr: 172.30.0.0/16
       ports:
         - protocol: UDP
           port: 53
         - protocol: TCP
           port: 53
+    # Kubernetes API + in-cluster services on ClusterIPs (OVN may not match 0.0.0.0/0).
+    - to:
+        - ipBlock:
+            cidr: 172.30.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443
     - to:
         - namespaceSelector:
             matchLabels:
@@ -56,6 +74,15 @@ spec:
       ports:
         - protocol: TCP
           port: 9000
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: rhoai-model-registries
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8443
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0

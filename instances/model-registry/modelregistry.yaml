@@ -1,0 +1,28 @@
+# Apply after DataScienceCluster is Ready (overlay 11) so the ModelRegistry CRD exists.
+# Must live in DSC spec.components.modelregistry.registriesNamespace.
+apiVersion: modelregistry.opendatahub.io/v1beta1
+kind: ModelRegistry
+metadata:
+  name: model-registry
+  namespace: rhoai-model-registries
+  labels:
+    app.kubernetes.io/name: model-registry
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+  annotations:
+    opendatahub.io/display-name: model-registry
+    opendatahub.io/description: Verified models from the AI model security pipeline
+spec:
+  grpc: {}
+  rest:
+    port: 8080
+  oauthProxy: {}
+  postgres:
+    host: model-registry-db
+    port: 5432
+    database: model-registry
+    username: modelregistryuser
+    passwordSecret:
+      name: model-registry-db
+      key: database-password
+    skipDBCreation: false
+    sslMode: disable

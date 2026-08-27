@@ -7,140 +7,388 @@ metadata:
 spec:
   description: Validate model artifacts from MinIO ingress through security tasks; promote to Model Registry on pass.
   params:
-    - name: model-id
-      type: string
-      description: Storage key under models-ingress/ (e.g. redhatai-qwen3-8b-fp8-dynamic)
-    - name: model-path
-      type: string
-      default: /workspace/models
-    - name: model-registry-namespace
-      type: string
-      default: rhoai-model-registries
+  - name: model-id
+    type: string
+    description: Storage key under models-ingress/ (e.g. redhatai-qwen3-8b-fp8-dynamic)
+  - name: model-path
+    type: string
+    default: /workspace/models
+  - name: model-registry-namespace
+    type: string
+    default: rhoai-model-registries
   workspaces:
-    - name: shared-data
-      description: eval-workspace PVC mount (/models and /results subpaths)
+  - name: shared-data
+    description: eval-workspace PVC for model weights only (scan JSON is in MinIO models-eval)
+  - name: results
+    description: Pod-local emptyDir for scan JSON before S3 upload; not shared across TaskRuns
   taskRunSpecs:
-    - pipelineTaskName: static-scan
-      podTemplate:
-        runtimeClassName: kata
-    - pipelineTaskName: dynamic-probe
-      podTemplate:
-        runtimeClassName: kata
+  - pipelineTaskName: quality
+    podTemplate:
+      nodeSelector:
+        nvidia.com/gpu.present: 'true'
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+  - pipelineTaskName: performance-cost
+    podTemplate:
+      nodeSelector:
+        nvidia.com/gpu.present: 'true'
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+  - pipelineTaskName: stability-check
+    podTemplate:
+      nodeSelector:
+        nvidia.com/gpu.present: 'true'
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+  - pipelineTaskName: anomaly-bias-detection
+    podTemplate:
+      nodeSelector:
+        nvidia.com/gpu.present: 'true'
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+  - pipelineTaskName: prompt-injection
+    podTemplate:
+      nodeSelector:
+        nvidia.com/gpu.present: 'true'
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+  - pipelineTaskName: jailbreak-guardrail-bypass
+    podTemplate:
+      nodeSelector:
+        nvidia.com/gpu.present: 'true'
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+  - pipelineTaskName: harmful-content-bias
+    podTemplate:
+      nodeSelector:
+        nvidia.com/gpu.present: 'true'
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
   tasks:
-    - name: fetch-artifact
-      taskRef:
-        name: fetch-artifact
-      params:
-        - name: model-id
-          value: $(params.model-id)
-      workspaces:
-        - name: models
-          workspace: shared-data
-          subPath: models
-
-    - name: static-scan
-      runAfter:
-        - fetch-artifact
-      taskRef:
-        name: static-scan
-      params:
-        - name: model-path
-          value: $(params.model-path)
-      workspaces:
-        - name: models
-          workspace: shared-data
-          subPath: models
-        - name: results
-          workspace: shared-data
-          subPath: results
-
-    - name: dynamic-probe
-      runAfter:
-        - static-scan
-      taskRef:
-        name: dynamic-probe
-      workspaces:
-        - name: models
-          workspace: shared-data
-          subPath: models
-        - name: results
-          workspace: shared-data
-          subPath: results
-
-    - name: dynamic-gpu-load
-      runAfter:
-        - dynamic-probe
-      taskRef:
-        name: dynamic-gpu-load
-      workspaces:
-        - name: models
-          workspace: shared-data
-          subPath: models
-        - name: results
-          workspace: shared-data
-          subPath: results
-
-    - name: capability-eval
-      runAfter:
-        - dynamic-gpu-load
-      taskRef:
-        name: capability-eval
-      params:
-        - name: model-path
-          value: $(params.model-path)
-      workspaces:
-        - name: models
-          workspace: shared-data
-          subPath: models
-        - name: results
-          workspace: shared-data
-          subPath: results
-
-    - name: red-team
-      runAfter:
-        - capability-eval
-      taskRef:
-        name: red-team
-      params:
-        - name: model-path
-          value: $(params.model-path)
-      workspaces:
-        - name: models
-          workspace: shared-data
-          subPath: models
-        - name: results
-          workspace: shared-data
-          subPath: results
-
-    - name: score-gate
-      runAfter:
-        - red-team
-      taskRef:
-        name: score-gate
-      workspaces:
-        - name: results
-          workspace: shared-data
-          subPath: results
-
-    - name: publish-artifact
-      runAfter:
-        - score-gate
-      when:
-        - input: $(tasks.score-gate.results.passed)
-          operator: in
-          values:
-            - "true"
-      taskRef:
-        name: publish-artifact
-      params:
-        - name: model-id
-          value: $(params.model-id)
-        - name: model-registry-namespace
-          value: $(params.model-registry-namespace)
-      workspaces:
-        - name: models
-          workspace: shared-data
-          subPath: models
-        - name: results
-          workspace: shared-data
-          subPath: results
+  - name: fetch-artifact
+    taskRef:
+      name: fetch-artifact
+    params:
+    - name: model-id
+      value: $(params.model-id)
+    workspaces:
+    - name: models
+      workspace: shared-data
+      subPath: models
+  - name: malware
+    runAfter:
+    - fetch-artifact
+    taskRef:
+      name: static-scan-malware
+    params:
+    - name: model-path
+      value: $(params.model-path)
+    - &id001
+      name: model-id
+      value: $(params.model-id)
+    - &id002
+      name: pipeline-run-name
+      value: $(context.pipelineRun.name)
+    workspaces:
+    - name: models
+      workspace: shared-data
+      subPath: models
+    - name: results
+      workspace: results
+  - name: vulnerabilities
+    runAfter:
+    - fetch-artifact
+    taskRef:
+      name: static-scan-vulnerabilities
+    params:
+    - name: model-path
+      value: $(params.model-path)
+    - *id001
+    - *id002
+    workspaces:
+    - name: models
+      workspace: shared-data
+      subPath: models
+    - name: results
+      workspace: results
+  - name: license-compliance
+    runAfter:
+    - fetch-artifact
+    taskRef:
+      name: static-scan-license-compliance
+    params:
+    - name: model-path
+      value: $(params.model-path)
+    - *id001
+    - *id002
+    workspaces:
+    - name: models
+      workspace: shared-data
+      subPath: models
+    - name: results
+      workspace: results
+  - name: static-scan
+    runAfter:
+    - malware
+    - vulnerabilities
+    - license-compliance
+    taskRef:
+      name: static-scan-merge
+    workspaces:
+    - name: results
+      workspace: results
+    params:
+    - *id001
+    - *id002
+  - name: isolated-runtime
+    runAfter:
+    - static-scan
+    taskRef:
+      name: dynamic-scan-isolated-runtime
+    workspaces:
+    - name: models
+      workspace: shared-data
+      subPath: models
+    - name: results
+      workspace: results
+    params:
+    - *id001
+    - *id002
+  - name: behavior
+    runAfter:
+    - static-scan
+    taskRef:
+      name: dynamic-scan-behavior
+    workspaces:
+    - name: models
+      workspace: shared-data
+      subPath: models
+    - name: results
+      workspace: results
+    params:
+    - *id001
+    - *id002
+  - name: abnormal-resources
+    runAfter:
+    - static-scan
+    taskRef:
+      name: dynamic-scan-abnormal-resources
+    workspaces:
+    - name: models
+      workspace: shared-data
+      subPath: models
+    - name: results
+      workspace: results
+    params:
+    - *id001
+    - *id002
+  - name: basic-inference
+    runAfter:
+    - static-scan
+    taskRef:
+      name: dynamic-scan-basic-inference
+    params:
+    - name: model-path
+      value: $(params.model-path)
+    - *id001
+    - *id002
+    workspaces:
+    - name: models
+      workspace: shared-data
+      subPath: models
+    - name: results
+      workspace: results
+  - name: dynamic-scan
+    runAfter:
+    - isolated-runtime
+    - behavior
+    - abnormal-resources
+    - basic-inference
+    taskRef:
+      name: dynamic-scan-merge
+    workspaces:
+    - name: results
+      workspace: results
+    params:
+    - *id001
+    - *id002
+  - name: quality
+    runAfter:
+    - dynamic-scan
+    taskRef:
+      name: capability-eval-quality
+    workspaces:
+    - name: models
+      workspace: shared-data
+      subPath: models
+    - name: results
+      workspace: results
+    params:
+    - *id001
+    - *id002
+  - name: performance-cost
+    runAfter:
+    - dynamic-scan
+    taskRef:
+      name: capability-eval-performance-cost
+    workspaces:
+    - name: models
+      workspace: shared-data
+      subPath: models
+    - name: results
+      workspace: results
+    params:
+    - *id001
+    - *id002
+  - name: stability-check
+    runAfter:
+    - dynamic-scan
+    taskRef:
+      name: capability-eval-stability
+    workspaces:
+    - name: models
+      workspace: shared-data
+      subPath: models
+    - name: results
+      workspace: results
+    params:
+    - *id001
+    - *id002
+  - name: anomaly-bias-detection
+    runAfter:
+    - dynamic-scan
+    taskRef:
+      name: capability-eval-anomaly-bias
+    workspaces:
+    - name: models
+      workspace: shared-data
+      subPath: models
+    - name: results
+      workspace: results
+    params:
+    - *id001
+    - *id002
+  - name: capability-eval
+    runAfter:
+    - quality
+    - performance-cost
+    - stability-check
+    - anomaly-bias-detection
+    taskRef:
+      name: capability-eval-merge
+    workspaces:
+    - name: results
+      workspace: results
+    params:
+    - *id001
+    - *id002
+  - name: prompt-injection
+    runAfter:
+    - capability-eval
+    taskRef:
+      name: adversarial-test-prompt-injection
+    workspaces:
+    - name: models
+      workspace: shared-data
+      subPath: models
+    - name: results
+      workspace: results
+    params:
+    - *id001
+    - *id002
+  - name: jailbreak-guardrail-bypass
+    runAfter:
+    - capability-eval
+    taskRef:
+      name: adversarial-test-jailbreak-guardrail-bypass
+    workspaces:
+    - name: models
+      workspace: shared-data
+      subPath: models
+    - name: results
+      workspace: results
+    params:
+    - *id001
+    - *id002
+  - name: harmful-content-bias
+    runAfter:
+    - capability-eval
+    taskRef:
+      name: adversarial-test-harmful-content-bias
+    workspaces:
+    - name: models
+      workspace: shared-data
+      subPath: models
+    - name: results
+      workspace: results
+    params:
+    - *id001
+    - *id002
+  - name: adversarial-test
+    runAfter:
+    - prompt-injection
+    - jailbreak-guardrail-bypass
+    - harmful-content-bias
+    taskRef:
+      name: adversarial-test-merge
+    workspaces:
+    - name: results
+      workspace: results
+    params:
+    - *id001
+    - *id002
+  - name: score-gate
+    runAfter:
+    - adversarial-test
+    taskRef:
+      name: score-gate
+    workspaces:
+    - name: results
+      workspace: results
+    params:
+    - *id001
+    - *id002
+  - name: publish-artifact
+    runAfter:
+    - score-gate
+    when:
+    - input: $(tasks.score-gate.results.passed)
+      operator: in
+      values:
+      - 'true'
+    taskRef:
+      name: publish-artifact
+    params:
+    - name: model-id
+      value: $(params.model-id)
+    - name: model-registry-namespace
+      value: $(params.model-registry-namespace)
+    - name: pipeline-run-name
+      value: $(context.pipelineRun.name)
+    workspaces:
+    - name: models
+      workspace: shared-data
+      subPath: models
+  finally:
+  - name: archive-results
+    taskRef:
+      name: archive-results
+    params:
+    - name: model-id
+      value: $(params.model-id)
+    - name: pipeline-run-name
+      value: $(context.pipelineRun.name)

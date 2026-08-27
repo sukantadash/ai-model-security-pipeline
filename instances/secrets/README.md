@@ -6,11 +6,11 @@
 #   oc secrets link builder sudash-modelpipeline-pull-secret -n build-image
 #   oc apply -f quay-secret.yaml -n model-ingress
 #   oc apply -f quay-secret.yaml -n model-eval
-#   oc apply -f quay-secret.yaml -n model-prod
+#   oc apply -f quay-secret.yaml -n model-test
 #
 # MinIO S3 (model weights — all zones):
 #   cp minio-s3-secret.yaml.template minio-s3-secret.yaml  # edit credentials
-#   for ns in model-ingress model-eval model-prod; do
+#   for ns in model-ingress model-eval model-test; do
 #     oc apply -f minio-s3-secret.yaml -n "${ns}"
 #   done
 #

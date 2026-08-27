@@ -1,0 +1,68 @@
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: unit-adversarial-prompt-injection-
+  labels:
+    test: adversarial-test-unit
+    ai.security.pipeline/stage: adversarial-test
+spec:
+  serviceAccountName: model-eval-pipeline
+  taskRef:
+    name: adversarial-test-prompt-injection
+  workspaces:
+  - name: models
+    configMap:
+      name: fixture-adversarial-prompt-injection
+  - name: results
+    emptyDir: {}
+  params:
+  - name: model-id
+    value: unit-test
+  - name: pipeline-run-name
+    value: model-security-unit1
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: unit-adversarial-jailbreak-guardrail-bypass-
+  labels:
+    test: adversarial-test-unit
+    ai.security.pipeline/stage: adversarial-test
+spec:
+  serviceAccountName: model-eval-pipeline
+  taskRef:
+    name: adversarial-test-jailbreak-guardrail-bypass
+  workspaces:
+  - name: models
+    configMap:
+      name: fixture-adversarial-jailbreak
+  - name: results
+    emptyDir: {}
+  params:
+  - name: model-id
+    value: unit-test
+  - name: pipeline-run-name
+    value: model-security-unit1
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: unit-adversarial-harmful-content-bias-
+  labels:
+    test: adversarial-test-unit
+    ai.security.pipeline/stage: adversarial-test
+spec:
+  serviceAccountName: model-eval-pipeline
+  taskRef:
+    name: adversarial-test-harmful-content-bias
+  workspaces:
+  - name: models
+    configMap:
+      name: fixture-adversarial-harmful-content-bias
+  - name: results
+    emptyDir: {}
+  params:
+  - name: model-id
+    value: unit-test
+  - name: pipeline-run-name
+    value: model-security-unit1

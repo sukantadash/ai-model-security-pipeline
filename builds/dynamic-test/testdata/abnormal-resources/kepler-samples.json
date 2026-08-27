@@ -1,0 +1,6 @@
+{
+  "cpuCoresMax": 1.0,
+  "rssBytesMax": 1073741824,
+  "gpuPowerWattsMax": 80,
+  "oom": true
+}

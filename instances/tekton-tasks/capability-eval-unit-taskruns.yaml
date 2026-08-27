@@ -1,0 +1,91 @@
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: unit-capability-quality-
+  labels:
+    test: capability-eval-unit
+    ai.security.pipeline/stage: capability-eval
+spec:
+  serviceAccountName: model-eval-pipeline
+  taskRef:
+    name: capability-eval-quality
+  workspaces:
+  - name: models
+    configMap:
+      name: fixture-capability-quality
+  - name: results
+    emptyDir: {}
+  params:
+  - name: model-id
+    value: unit-test
+  - name: pipeline-run-name
+    value: model-security-unit1
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: unit-capability-performance-cost-
+  labels:
+    test: capability-eval-unit
+    ai.security.pipeline/stage: capability-eval
+spec:
+  serviceAccountName: model-eval-pipeline
+  taskRef:
+    name: capability-eval-performance-cost
+  workspaces:
+  - name: models
+    configMap:
+      name: fixture-capability-performance-cost
+  - name: results
+    emptyDir: {}
+  params:
+  - name: model-id
+    value: unit-test
+  - name: pipeline-run-name
+    value: model-security-unit1
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: unit-capability-stability-
+  labels:
+    test: capability-eval-unit
+    ai.security.pipeline/stage: capability-eval
+spec:
+  serviceAccountName: model-eval-pipeline
+  taskRef:
+    name: capability-eval-stability
+  workspaces:
+  - name: models
+    configMap:
+      name: fixture-capability-stability
+  - name: results
+    emptyDir: {}
+  params:
+  - name: model-id
+    value: unit-test
+  - name: pipeline-run-name
+    value: model-security-unit1
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: unit-capability-anomaly-bias-
+  labels:
+    test: capability-eval-unit
+    ai.security.pipeline/stage: capability-eval
+spec:
+  serviceAccountName: model-eval-pipeline
+  taskRef:
+    name: capability-eval-anomaly-bias
+  workspaces:
+  - name: models
+    configMap:
+      name: fixture-capability-anomaly-bias
+  - name: results
+    emptyDir: {}
+  params:
+  - name: model-id
+    value: unit-test
+  - name: pipeline-run-name
+    value: model-security-unit1

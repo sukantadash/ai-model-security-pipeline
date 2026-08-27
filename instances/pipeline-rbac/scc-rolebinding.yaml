@@ -11,4 +11,3 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: model-eval-pipeline
-    namespace: model-eval

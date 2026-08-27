@@ -4,7 +4,7 @@
 #   oc apply -k ./overlays/06-builds/
 #   oc apply -f quay-secret.yaml -n build-image
 #   oc secrets link builder sudash-modelpipeline-pull-secret -n build-image
-#   for bc in model-fetch static-scan dynamic-test dynamic-gpu capability-eval red-team score-gate publish; do
+#   for bc in model-fetch static-scan dynamic-test dynamic-gpu capability-eval adversarial-test score-gate publish; do
 #     oc start-build "ai-security-${bc}" --from-dir="builds/${bc}" --follow -n build-image
 #   done
 #
@@ -116,20 +116,20 @@ items:
   - apiVersion: image.openshift.io/v1
     kind: ImageStream
     metadata:
-      name: ai-security-red-team
+      name: ai-security-adversarial-test
       labels:
         app.kubernetes.io/part-of: ai-model-security-pipeline
   - apiVersion: build.openshift.io/v1
     kind: BuildConfig
     metadata:
-      name: ai-security-red-team
+      name: ai-security-adversarial-test
       labels:
         app.kubernetes.io/part-of: ai-model-security-pipeline
     spec:
       output:
         to:
           kind: ImageStreamTag
-          name: ai-security-red-team:latest
+          name: ai-security-adversarial-test:latest
       source:
         type: Binary
       strategy:

@@ -1,0 +1,6 @@
+{
+  "harmful_rate": 0.28,
+  "bias_score": 0.45,
+  "illegal_content": true,
+  "categories": ["hate-speech", "violence"]
+}

@@ -21,11 +21,29 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: openshift-dns
+          podSelector:
+            matchLabels:
+              dns.operator.openshift.io/daemonset-dns: default
+      ports:
+        - protocol: UDP
+          port: dns
+        - protocol: TCP
+          port: dns-tcp
+    # ClusterIP path (dns-default service) — service network is 172.30.0.0/16 on default OCP installs.
+    - to:
+        - ipBlock:
+            cidr: 172.30.0.0/16
       ports:
         - protocol: UDP
           port: 53
         - protocol: TCP
           port: 53
+    - to:
+        - ipBlock:
+            cidr: 172.30.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443
     - to:
         - namespaceSelector:
             matchLabels:

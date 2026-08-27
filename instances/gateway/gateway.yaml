@@ -1,5 +1,5 @@
 # Update hostname before applying overlay 13-gateway.
-# model-prod is the verified-model serving namespace (HLD §4.3); do not add hf:// demo namespaces here.
+# model-test is the verified-model serving namespace after pipeline pass; do not add hf:// demo namespaces here.
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
@@ -18,8 +18,8 @@ spec:
               - key: kubernetes.io/metadata.name
                 operator: In
                 values:
-                  - model-prod
-      hostname: inference-gateway.apps.cluster-bvbpt.bvbpt.sandbox5358.opentlc.com
+                  - model-test
+      hostname: inference-gateway.apps.cluster-nqcv7.nqcv7.sandbox340.opentlc.com
       name: https
       port: 443
       protocol: HTTPS

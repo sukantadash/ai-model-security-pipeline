@@ -28,3 +28,5 @@ spec:
     - name: shared-data
       persistentVolumeClaim:
         claimName: eval-workspace
+    - name: results
+      emptyDir: {}

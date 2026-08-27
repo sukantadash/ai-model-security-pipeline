@@ -10,6 +10,6 @@ __pycache__/
 .DS_Store
 *.swp
 *.swo
-.idea/
+.unit-out/
 .vscode/
 reference/

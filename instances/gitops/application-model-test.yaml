@@ -1,0 +1,27 @@
+# Argo CD Application — syncs verified model manifests to model-test.
+# Promotion to model-prod is manual and is not handled by this Application.
+# Edit spec.source.repoURL to your fork before applying overlay 17.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: model-test-verified-models
+  namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io/argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/sukantadash/ai-model-security-pipeline.git
+    targetRevision: main
+    path: instances/model-test/llm-models
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: model-test
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=false
+    automated:
+      prune: true
+      selfHeal: true

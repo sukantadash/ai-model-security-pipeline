@@ -1,0 +1,19 @@
+# MinIO Console UI — OpenShift assigns host minio-console-minio-system.apps.<cluster>.
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: minio-console
+  labels:
+    app: minio
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+spec:
+  to:
+    kind: Service
+    name: minio
+    weight: 100
+  port:
+    targetPort: console
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None

@@ -1,0 +1,16 @@
+# EventListener sink must reach the Kubernetes API (informers). OVN does not route
+# kubernetes.default ClusterIP (172.30.0.1:443) through standard service-CIDR rules.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: eventlistener-allow-egress
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+spec:
+  podSelector:
+    matchLabels:
+      eventlistener: model-security-listener
+  policyTypes:
+    - Egress
+  egress:
+    - {}

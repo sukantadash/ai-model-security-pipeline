@@ -1,0 +1,7 @@
+[
+  {
+    "rule": "model_sandbox_shell",
+    "risk": "critical",
+    "tool_used": "falco"
+  }
+]

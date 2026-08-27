@@ -14,4 +14,4 @@ oc wait --for=condition=complete job/model-fetch -n model-ingress --timeout=7200
 oc create -f ./instances/tekton-pipeline/pipelinerun-example.yaml
 ```
 
-On success, **`publish-artifact`** promotes to `s3://models-verified/...` and registers in RHOAI Model Registry. Update GitOps manifest placeholders from `publish.json` / PipelineRun results, then apply overlay 16 or let overlay 17 sync.
+On success, **`publish-artifact`** promotes weights to `s3://models-verified/<model-id>/<version>/` (version = last five characters of the PipelineRun name) and registers in RHOAI Model Registry. Scan JSON is stored at `s3://models-eval/<model-id>/<version>/scan-result/` (each subtask uploads as it finishes). Update GitOps manifest placeholders from `publish.json` / PipelineRun results, then apply overlay 16 or let overlay 17 sync into **model-test**. Promotion to **model-prod** is a later manual process.

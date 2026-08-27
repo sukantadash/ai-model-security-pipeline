@@ -1,0 +1,79 @@
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: unit-dynamic-scan-merge-
+  labels:
+    test: dynamic-scan-merge-unit
+    ai.security.pipeline/stage: dynamic-scan
+spec:
+  serviceAccountName: model-eval-pipeline
+  taskRef:
+    name: dynamic-scan-merge
+  workspaces:
+  - name: results
+    emptyDir: {}
+  params:
+  - name: model-id
+    value: unit-test
+  - name: pipeline-run-name
+    value: model-security-unit1
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: unit-capability-eval-merge-
+  labels:
+    test: capability-eval-merge-unit
+    ai.security.pipeline/stage: capability-eval
+spec:
+  serviceAccountName: model-eval-pipeline
+  taskRef:
+    name: capability-eval-merge
+  workspaces:
+  - name: results
+    emptyDir: {}
+  params:
+  - name: model-id
+    value: unit-test
+  - name: pipeline-run-name
+    value: model-security-unit1
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: unit-adversarial-test-merge-
+  labels:
+    test: adversarial-test-merge-unit
+    ai.security.pipeline/stage: adversarial-test
+spec:
+  serviceAccountName: model-eval-pipeline
+  taskRef:
+    name: adversarial-test-merge
+  workspaces:
+  - name: results
+    emptyDir: {}
+  params:
+  - name: model-id
+    value: unit-test
+  - name: pipeline-run-name
+    value: model-security-unit1
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: unit-score-gate-
+  labels:
+    test: score-gate-unit
+    ai.security.pipeline/stage: score-gate
+spec:
+  serviceAccountName: model-eval-pipeline
+  taskRef:
+    name: score-gate
+  workspaces:
+  - name: results
+    emptyDir: {}
+  params:
+  - name: model-id
+    value: unit-test
+  - name: pipeline-run-name
+    value: model-security-unit1

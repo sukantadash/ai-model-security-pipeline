@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: model-prod
-  labels:
-    app.kubernetes.io/part-of: ai-model-security-pipeline
-    security.platform/zone: production
-  annotations:
-    openshift.io/display-name: "Model Security - Production Zone"

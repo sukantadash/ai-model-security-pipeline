@@ -1,0 +1,7 @@
+{
+  "latency_p50_ms": 120,
+  "latency_p99_ms": 8500,
+  "tokens_per_sec": 1.2,
+  "gpu_hours": 4.0,
+  "usd_per_gpu_hour": 2.5
+}

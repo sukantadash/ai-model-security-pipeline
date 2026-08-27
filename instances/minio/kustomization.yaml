@@ -9,4 +9,6 @@ resources:
   - pvc.yaml
   - deployment.yaml
   - service.yaml
+  - route-api.yaml
+  - route-console.yaml
   - bucket-init-job.yaml

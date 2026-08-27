@@ -5,5 +5,5 @@ kind: Kustomization
 resources:
   - ../../instances/model-ingress
   - ../../instances/model-eval
-  - ../../instances/model-prod
+  - ../../instances/model-test
   - ../../instances/pipeline-rbac

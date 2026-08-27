@@ -1,0 +1,7 @@
+{
+  "benchmarks": {
+    "mmlu": 0.31,
+    "gsm8k": 0.22,
+    "humaneval": 0.15
+  }
+}

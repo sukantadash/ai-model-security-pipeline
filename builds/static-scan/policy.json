@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "immediate_fail": {
+    "modelaudit_needles": [
+      "exec",
+      "eval",
+      "os.system",
+      "posix.system",
+      "subprocess",
+      "__reduce__",
+      "pickle.loads"
+    ],
+    "tool_missing_needles": [
+      "not installed",
+      "not usable",
+      "produced no sbom"
+    ]
+  },
+  "timeouts": {
+    "modelaudit_seconds": 1800,
+    "fickling_seconds": 60,
+    "modelscan_seconds": 600,
+    "clamav_seconds": 900,
+    "syft_seconds": 300,
+    "grype_seconds": 300
+  },
+  "clamav": {
+    "max_filesize": "100M",
+    "max_scansize": "200M",
+    "exclude_globs": ["*.safetensors", "*.gguf", "*.ggml", "*.onnx"]
+  },
+  "fickling_extensions": [".pkl", ".pickle", ".pt", ".pth", ".bin", ".joblib"],
+  "fickling_max_files": 40,
+  "fickling_max_bytes": 524288000,
+  "magika_native_labels": ["elf", "pe", "macho", "dex", "java bytecode", "coff"],
+  "licenses": {
+    "allow": [
+      "apache-2.0",
+      "mit",
+      "bsd-2-clause",
+      "bsd-3-clause",
+      "isc",
+      "unlicense",
+      "cc0-1.0",
+      "cc-by-4.0",
+      "mpl-2.0",
+      "psfl",
+      "openrail",
+      "openrail++",
+      "llama2",
+      "llama3",
+      "llama3.1",
+      "llama3.2",
+      "llama3.3",
+      "gemma",
+      "apple-amlr",
+      "bigscience-openrail-m"
+    ],
+    "copyleft": [
+      "gpl-2.0",
+      "gpl-3.0",
+      "gpl-2.0-only",
+      "gpl-3.0-only",
+      "gpl-2.0-or-later",
+      "gpl-3.0-or-later",
+      "lgpl-2.1",
+      "lgpl-3.0",
+      "cc-by-sa-4.0"
+    ],
+    "deny": [
+      "agpl-3.0",
+      "agpl-3.0-only",
+      "agpl-3.0-or-later",
+      "sspl-1.0",
+      "busl-1.1",
+      "commons-clause",
+      "cc-by-nc-4.0",
+      "cc-by-nc-sa-4.0",
+      "cc-by-nc-2.0",
+      "cc-by-nc-3.0",
+      "llama2-community-noncommercial"
+    ]
+  }
+}

@@ -6,4 +6,7 @@ RUN curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /tmp/mc && 
     dnf install -y jq && dnf clean all
 USER 1001
 COPY scripts/ /scripts/
+USER root
+RUN chmod +x /scripts/*.sh
+USER 1001
 ENTRYPOINT ["/scripts/publish-to-registry.sh"]

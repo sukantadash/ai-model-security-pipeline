@@ -1,0 +1,80 @@
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: unit-static-malware-
+  labels:
+    test: static-scan-unit
+    ai.security.pipeline/stage: static-scan
+spec:
+  serviceAccountName: model-eval-pipeline
+  taskRef:
+    name: static-scan-malware
+  params:
+  - name: model-path
+    value: /workspace/models
+  - name: fail-on-immediate
+    value: 'false'
+  - name: model-id
+    value: unit-test
+  - name: pipeline-run-name
+    value: model-security-unit1
+  workspaces:
+  - name: models
+    configMap:
+      name: fixture-static-malware
+  - name: results
+    emptyDir: {}
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: unit-static-vulnerabilities-
+  labels:
+    test: static-scan-unit
+    ai.security.pipeline/stage: static-scan
+spec:
+  serviceAccountName: model-eval-pipeline
+  taskRef:
+    name: static-scan-vulnerabilities
+  params:
+  - name: model-path
+    value: /workspace/models
+  - name: fail-on-immediate
+    value: 'false'
+  - name: model-id
+    value: unit-test
+  - name: pipeline-run-name
+    value: model-security-unit1
+  workspaces:
+  - name: models
+    configMap:
+      name: fixture-static-vulnerabilities
+  - name: results
+    emptyDir: {}
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: unit-static-license-compliance-
+  labels:
+    test: static-scan-unit
+    ai.security.pipeline/stage: static-scan
+spec:
+  serviceAccountName: model-eval-pipeline
+  taskRef:
+    name: static-scan-license-compliance
+  params:
+  - name: model-path
+    value: /workspace/models
+  - name: fail-on-immediate
+    value: 'false'
+  - name: model-id
+    value: unit-test
+  - name: pipeline-run-name
+    value: model-security-unit1
+  workspaces:
+  - name: models
+    configMap:
+      name: fixture-static-license
+  - name: results
+    emptyDir: {}

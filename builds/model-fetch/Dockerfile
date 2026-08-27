@@ -6,4 +6,7 @@ RUN curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /tmp/mc && 
     pip install --no-cache-dir huggingface_hub magika
 USER 1001
 COPY scripts/ /scripts/
+USER root
+RUN chmod +x /scripts/*.sh
+USER 1001
 ENTRYPOINT ["/scripts/download-hf-model.sh"]

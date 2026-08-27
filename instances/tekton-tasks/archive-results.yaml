@@ -1,0 +1,59 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: archive-results
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+spec:
+  description: >
+    Write manifest.json into s3://models-eval/<model-id>/<version>/scan-result/.
+    Subtasks already upload their JSON to that prefix.
+  params:
+    - name: image
+      type: string
+      default: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    - name: model-id
+      type: string
+    - name: pipeline-run-name
+      type: string
+  results:
+    - name: scan-uri
+    - name: model-version
+  steps:
+    - name: manifest
+      image: $(params.image)
+      envFrom:
+        - secretRef:
+            name: minio-s3
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        source /scripts/s3-common.sh
+        MODEL_ID="$(params.model-id)"
+        PR="$(params.pipeline-run-name)"
+        if [[ -z "${PR}" ]]; then PR="$(context.taskRun.name)"; fi
+        VERSION="$(model_version_from_run "${PR}")"
+        DEST="/tmp/scan-result"
+        s3_fetch_scan_prefix "${MODEL_ID}" "${VERSION}" "${DEST}" >/dev/null
+        URI=$(s3_scan_result_uri "${MODEL_ID}" "${VERSION}")
+        python3 - <<PY
+        import json
+        from pathlib import Path
+        dest = Path("${DEST}")
+        score_path = dest / "score.json"
+        payload = {
+            "model_id": "${MODEL_ID}",
+            "version": "${VERSION}",
+            "scan_uri": "${URI}",
+        }
+        if score_path.is_file():
+            summary = json.loads(score_path.read_text())
+            payload["routing"] = summary.get("routing")
+            payload["score"] = summary.get("S_total", summary.get("score"))
+        (dest / "manifest.json").write_text(json.dumps(payload, indent=2) + "\n")
+        print(json.dumps(payload))
+        PY
+        s3_put_scan_result "${MODEL_ID}" "${VERSION}" "${DEST}/manifest.json"
+        echo -n "${VERSION}" > "$(results.model-version.path)"
+        echo -n "${URI}" > "$(results.scan-uri.path)"
+        echo "Scan pack ${URI}"

@@ -1,0 +1,83 @@
+# PostgreSQL 16 for RHOAI Model Registry metadata (not model weights).
+# Edit postgres-secret.yaml before apply. Recreate strategy: RWO PVC.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-registry-db
+  namespace: rhoai-model-registries
+  labels:
+    app.kubernetes.io/name: model-registry-db
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+spec:
+  replicas: 1
+  revisionHistoryLimit: 0
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      name: model-registry-db
+  template:
+    metadata:
+      labels:
+        name: model-registry-db
+        sidecar.istio.io/inject: "false"
+    spec:
+      containers:
+        - name: postgresql
+          image: registry.redhat.io/rhel9/postgresql-16:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: POSTGRESQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: model-registry-db
+                  key: database-user
+            - name: POSTGRESQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: model-registry-db
+                  key: database-password
+            - name: POSTGRESQL_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: model-registry-db
+                  key: database-name
+          ports:
+            - name: postgresql
+              containerPort: 5432
+              protocol: TCP
+          volumeMounts:
+            - name: model-registry-db-data
+              mountPath: /var/lib/pgsql/data
+          livenessProbe:
+            exec:
+              command:
+                - /usr/libexec/check-container
+                - --live
+            initialDelaySeconds: 30
+            timeoutSeconds: 10
+            periodSeconds: 20
+          readinessProbe:
+            exec:
+              command:
+                - /usr/libexec/check-container
+            initialDelaySeconds: 10
+            timeoutSeconds: 5
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+      volumes:
+        - name: model-registry-db-data
+          persistentVolumeClaim:
+            claimName: model-registry-db

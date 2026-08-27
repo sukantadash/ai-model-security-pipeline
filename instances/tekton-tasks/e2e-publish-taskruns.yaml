@@ -1,0 +1,42 @@
+# E2E publish + archive after scan JSON is in s3://models-eval/<model-id>/<version>/scan-result/.
+# Version is last five chars of pipeline-run-name (model-security-e2e01 -> e2e01).
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: e2e-archive-results-
+  labels:
+    test: e2e-publish
+    ai.security.pipeline/stage: archive-results
+spec:
+  serviceAccountName: model-eval-pipeline
+  taskRef:
+    name: archive-results
+  params:
+    - name: model-id
+      value: redhatai-qwen3-8b-fp8-dynamic
+    - name: pipeline-run-name
+      value: model-security-e2e01
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: e2e-publish-artifact-
+  labels:
+    test: e2e-publish
+    ai.security.pipeline/stage: publish-artifact
+spec:
+  serviceAccountName: model-eval-pipeline
+  taskRef:
+    name: publish-artifact
+  params:
+    - name: model-id
+      value: redhatai-qwen3-8b-fp8-dynamic
+    - name: model-registry-namespace
+      value: rhoai-model-registries
+    - name: pipeline-run-name
+      value: model-security-e2e01
+  workspaces:
+    - name: models
+      persistentVolumeClaim:
+        claimName: eval-workspace
+      subPath: models

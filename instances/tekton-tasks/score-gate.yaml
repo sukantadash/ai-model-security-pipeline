@@ -5,28 +5,83 @@ metadata:
   labels:
     app.kubernetes.io/part-of: ai-model-security-pipeline
 spec:
-  description: Aggregate task results into a pass/fail gate.
+  description: Compute S_total = 0.40×S_static + 0.35×S_capability + 0.25×S_redteam. Dynamic-scan is a hard gate. Auto-pass
+    publishes; review succeeds without publish; reject fails the PipelineRun after uploading score.json.
   params:
-    - name: image
-      type: string
-      default: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-score-gate:latest
+  - name: image
+    type: string
+    default: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-score-gate:latest
+  - name: model-id
+    type: string
+    default: unit-test
+  - name: pipeline-run-name
+    type: string
+    default: ''
   results:
-    - name: passed
-      description: "true when all scans pass"
-    - name: score-file
+  - name: passed
+    description: true only on auto-pass (S_total ≥ 85 and dynamic hard gate passed)
+  - name: routing
+    description: auto-pass | review | reject
+  - name: score-file
   workspaces:
-    - name: results
+  - name: results
   steps:
-    - name: aggregate
-      image: $(params.image)
-      script: |
-        #!/usr/bin/env bash
-        set -euo pipefail
-        OUT="$(workspaces.results.path)/score.json"
-        if python /scripts/aggregate-results.py "$(workspaces.results.path)" "${OUT}"; then
-          echo -n "true" > "$(results.passed.path)"
-        else
-          echo -n "false" > "$(results.passed.path)"
-          exit 1
-        fi
-        echo -n "${OUT}" > "$(results.score-file.path)"
+  - name: download
+    image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    envFrom:
+    - secretRef:
+        name: minio-s3
+    script: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      source /scripts/s3-common.sh
+      MODEL_ID="$(params.model-id)"
+      PR="$(params.pipeline-run-name)"
+      if [[ -z "${PR}" ]]; then PR="$(context.taskRun.name)"; fi
+      VERSION="$(model_version_from_run "${PR}")"
+      s3_fetch_scan_prefix "${MODEL_ID}" "${VERSION}" "$(workspaces.results.path)"
+  - name: aggregate
+    image: $(params.image)
+    script: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      trap 'echo $? > "$(workspaces.results.path)/.step-rc"' EXIT
+      OUT="$(workspaces.results.path)/score.json"
+      python /scripts/aggregate-results.py "$(workspaces.results.path)" "${OUT}"
+      python - "$(results.passed.path)" "$(results.routing.path)" "${OUT}" <<'PY'
+      import json, sys
+      from pathlib import Path
+      summary = json.loads(Path(sys.argv[3]).read_text())
+      routing = str(summary.get("routing") or "reject")
+      passed = "true" if summary.get("passed") and routing == "auto-pass" else "false"
+      Path(sys.argv[1]).write_text(passed)
+      Path(sys.argv[2]).write_text(routing)
+      PY
+      echo -n "${OUT}" > "$(results.score-file.path)"
+      routing="$(cat "$(results.routing.path)")"
+      if [[ "${routing}" == "reject" ]]; then
+        exit 1
+      fi
+    onError: continue
+  - name: upload
+    image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    envFrom:
+    - secretRef:
+        name: minio-s3
+    script: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      source /scripts/s3-common.sh
+      MODEL_ID="$(params.model-id)"
+      PR="$(params.pipeline-run-name)"
+      if [[ -z "${PR}" ]]; then PR="$(context.taskRun.name)"; fi
+      VERSION="$(model_version_from_run "${PR}")"
+      FILE="$(workspaces.results.path)/score.json"
+      s3_put_scan_result "${MODEL_ID}" "${VERSION}" "${FILE}"
+  - name: fail-if-prior-failed
+    image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    script: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      rc="$(cat "$(workspaces.results.path)/.step-rc" 2>/dev/null || echo 1)"
+      exit "${rc}"

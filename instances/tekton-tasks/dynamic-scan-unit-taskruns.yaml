@@ -1,0 +1,93 @@
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: unit-dynamic-isolated-runtime-
+  labels:
+    test: dynamic-scan-unit
+    ai.security.pipeline/stage: dynamic-scan
+spec:
+  serviceAccountName: model-eval-pipeline
+  taskRef:
+    name: dynamic-scan-isolated-runtime
+  workspaces:
+  - name: models
+    configMap:
+      name: fixture-dynamic-isolated-runtime
+  - name: results
+    emptyDir: {}
+  params:
+  - name: model-id
+    value: unit-test
+  - name: pipeline-run-name
+    value: model-security-unit1
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: unit-dynamic-behavior-
+  labels:
+    test: dynamic-scan-unit
+    ai.security.pipeline/stage: dynamic-scan
+spec:
+  serviceAccountName: model-eval-pipeline
+  taskRef:
+    name: dynamic-scan-behavior
+  workspaces:
+  - name: models
+    configMap:
+      name: fixture-dynamic-behavior
+  - name: results
+    emptyDir: {}
+  params:
+  - name: model-id
+    value: unit-test
+  - name: pipeline-run-name
+    value: model-security-unit1
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: unit-dynamic-abnormal-resources-
+  labels:
+    test: dynamic-scan-unit
+    ai.security.pipeline/stage: dynamic-scan
+spec:
+  serviceAccountName: model-eval-pipeline
+  taskRef:
+    name: dynamic-scan-abnormal-resources
+  workspaces:
+  - name: models
+    configMap:
+      name: fixture-dynamic-abnormal-resources
+  - name: results
+    emptyDir: {}
+  params:
+  - name: model-id
+    value: unit-test
+  - name: pipeline-run-name
+    value: model-security-unit1
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: unit-dynamic-basic-inference-
+  labels:
+    test: dynamic-scan-unit
+    ai.security.pipeline/stage: dynamic-scan
+spec:
+  serviceAccountName: model-eval-pipeline
+  taskRef:
+    name: dynamic-scan-basic-inference
+  params:
+  - name: model-path
+    value: /workspace/models
+  - name: model-id
+    value: unit-test
+  - name: pipeline-run-name
+    value: model-security-unit1
+  workspaces:
+  - name: models
+    configMap:
+      name: fixture-dynamic-basic-inference
+  - name: results
+    emptyDir: {}

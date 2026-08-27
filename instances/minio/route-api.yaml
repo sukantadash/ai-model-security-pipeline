@@ -1,0 +1,20 @@
+# S3 API — OpenShift assigns host minio-api-minio-system.apps.<cluster>.
+# In-cluster clients should keep using http://minio.minio-system.svc:9000.
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: minio-api
+  labels:
+    app: minio
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+spec:
+  to:
+    kind: Service
+    name: minio
+    weight: 100
+  port:
+    targetPort: api
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None

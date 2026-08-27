@@ -1,0 +1,16 @@
+# EventListener sink RBAC — clusterinterceptors / clustertriggerbindings watch.
+# Subject namespace must match NS_MODEL_EVAL (default model-eval).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: model-eval-pipeline-eventlistener-cluster
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tekton-triggers-eventlistener-clusterroles
+subjects:
+  - kind: ServiceAccount
+    name: model-eval-pipeline
+    namespace: model-eval

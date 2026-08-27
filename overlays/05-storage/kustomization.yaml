@@ -5,11 +5,12 @@
 #    oc apply -k ./overlays/05-storage/
 #    oc wait --for=condition=Available deployment/minio -n minio-system --timeout=600s
 #    oc wait --for=condition=complete job/minio-bucket-init -n minio-system --timeout=300s
+#    oc get route -n minio-system
 #
 # 2) Zone S3 credentials (see minio-s3-secret.yaml.template):
 #    oc create secret generic minio-s3 -n model-ingress --from-literal=... (template)
 #    oc create secret generic minio-s3 -n model-eval --from-literal=...
-#    oc create secret generic minio-s3 -n model-prod --from-literal=...
+#    oc create secret generic minio-s3 -n model-test --from-literal=...
 #
 # 3) Quay pull secret + HF token — see instances/secrets/README.md
 apiVersion: kustomize.config.k8s.io/v1beta1

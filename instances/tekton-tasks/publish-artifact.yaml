@@ -5,7 +5,10 @@ metadata:
   labels:
     app.kubernetes.io/part-of: ai-model-security-pipeline
 spec:
-  description: Promote verified model to MinIO and register in RHOAI Model Registry.
+  description: >
+    Promote verified model weights to MinIO models-verified and register in
+    RHOAI Model Registry. Version is the last five characters of the PipelineRun
+    name. Scan JSON is already at models-eval/.../scan-result/.
   params:
     - name: image
       type: string
@@ -15,12 +18,14 @@ spec:
     - name: model-registry-namespace
       type: string
       default: rhoai-model-registries
+    - name: pipeline-run-name
+      type: string
   results:
     - name: published-uri
     - name: model-version
+    - name: scan-uri
   workspaces:
     - name: models
-    - name: results
   steps:
     - name: publish
       image: $(params.image)
@@ -30,12 +35,65 @@ spec:
       script: |
         #!/usr/bin/env bash
         set -euo pipefail
-        export MODEL_ID="$(params.model-id)"
-        export MODEL_PATH="$(workspaces.models.path)"
-        export RESULTS_DIR="$(workspaces.results.path)"
-        export MODEL_REGISTRY_NAMESPACE="$(params.model-registry-namespace)"
-        export PIPELINE_RUN_ID="${PIPELINE_RUN_ID:-$(params.model-id)}"
-        URI=$(/scripts/publish-to-registry.sh)
-        echo -n "${URI}" > "$(results.published-uri.path)"
-        VERSION=$(python3 -c "import json; print(json.load(open('${RESULTS_DIR}/publish.json'))['model_version'])")
+        source /scripts/s3-common.sh
+        MODEL_ID="$(params.model-id)"
+        MODEL_PATH="$(workspaces.models.path)"
+        MR_NS="$(params.model-registry-namespace)"
+        MR_URL="${MODEL_REGISTRY_URL:-http://model-registry.${MR_NS}.svc:8080}"
+        PR="$(params.pipeline-run-name)"
+        if [[ -z "${PR}" ]]; then PR="$(context.taskRun.name)"; fi
+        VERSION="$(model_version_from_run "${PR}")"
+        DEST="/tmp/scan-result"
+        s3_fetch_scan_prefix "${MODEL_ID}" "${VERSION}" "${DEST}" >/dev/null
+        SCAN_URI=$(s3_scan_result_uri "${MODEL_ID}" "${VERSION}")
+        SCORE_FILE="${DEST}/score.json"
+
+        if [[ ! -f "${SCORE_FILE}" ]]; then
+          echo "score.json missing at ${SCAN_URI}; refusing promote" >&2
+          exit 1
+        fi
+        PASSED="$(jq -r '.passed // false' "${SCORE_FILE}")"
+        ROUTING="$(jq -r '.routing // empty' "${SCORE_FILE}")"
+        if [[ "${PASSED}" != "true" || "${ROUTING}" != "auto-pass" ]]; then
+          echo "refusing promote: passed=${PASSED} routing=${ROUTING}" >&2
+          exit 1
+        fi
+
+        S3_URI=$(s3_promote_verified "${MODEL_ID}" "${VERSION}" "${MODEL_PATH}")
+        echo "Promoted weights to ${S3_URI}"
+
+        REGISTER_PAYLOAD=$(jq -n \
+          --arg name "${MODEL_ID}" \
+          --arg uri "${S3_URI}" \
+          --arg scan "${SCAN_URI}" \
+          --arg version "${VERSION}" \
+          '{name: $name, description: "Verified by model-security-pipeline", customProperties: {storage_uri: $uri, scan_uri: $scan, version: $version}}')
+
+        HTTP_CODE=$(curl -sS -o /tmp/mr-register.json -w '%{http_code}' \
+          -X POST "${MR_URL}/api/model_registry/v1alpha3/registered_models" \
+          -H 'Content-Type: application/json' \
+          -d "${REGISTER_PAYLOAD}" || echo "000")
+
+        if [[ "${HTTP_CODE}" != "201" && "${HTTP_CODE}" != "200" ]]; then
+          echo "Model Registry registration returned ${HTTP_CODE}; body:" >&2
+          cat /tmp/mr-register.json >&2 || true
+          exit 1
+        fi
+
+        python3 - <<PY
+        import json
+        payload = {
+          "status": "pass",
+          "published_uri": "${S3_URI}",
+          "scan_uri": "${SCAN_URI}",
+          "model_registry_namespace": "${MR_NS}",
+          "model_version": "${VERSION}",
+        }
+        with open("${DEST}/publish.json", "w") as fh:
+            json.dump(payload, fh, indent=2)
+        print(json.dumps(payload))
+        PY
+        s3_put_scan_result "${MODEL_ID}" "${VERSION}" "${DEST}/publish.json"
+        echo -n "${S3_URI}" > "$(results.published-uri.path)"
         echo -n "${VERSION}" > "$(results.model-version.path)"
+        echo -n "${SCAN_URI}" > "$(results.scan-uri.path)"
