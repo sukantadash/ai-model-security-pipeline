@@ -57,7 +57,7 @@ oc get installplan -A
 
 # =============================================================================
 # Phase 2: Zones — namespaces, NetworkPolicies, pipeline RBAC
-# Overlay: 04-zones (eval/sandbox/test + build-image namespace + pipeline-rbac).
+# Overlay: 04-zones (eval/sandbox/test namespace + build-image namespace + pipeline-rbac).
 # as Phase 3; apply before overlay 03 so namespaces exist before KataConfig reboots.
 # model-ingress: pass namespace on the oc command (kustomization has no namespace:).
 # model-sandbox persists (pipeline never creates/deletes the namespace).
@@ -105,6 +105,17 @@ oc apply -f ./instances/storage/verified-models-pvc.yaml -n "${NS_MODEL_TEST}"
 # cp minio-s3-secret.yaml.template minio-s3-secret.yaml   # edit credentials first
 for ns in "${NS_MODEL_INGRESS}" "${NS_MODEL_EVAL}" "${NS_MODEL_SANDBOX}" "${NS_MODEL_TEST}"; do
   oc apply -f minio-s3-secret.yaml -n "${ns}"
+done
+# KServe storage-initializer reads s3-* from Secret annotations (not AWS_ENDPOINT_URL in data).
+# minio-s3-secret.yaml.template includes these; apply them here if your copy omits metadata.annotations.
+for ns in "${NS_MODEL_INGRESS}" "${NS_MODEL_EVAL}" "${NS_MODEL_SANDBOX}" "${NS_MODEL_TEST}"; do
+  oc annotate secret minio-s3 -n "${ns}" --overwrite \
+    "serving.kserve.io/s3-endpoint=minio.minio-system.svc:9000" \
+    "serving.kserve.io/s3-usehttps=0" \
+    "serving.kserve.io/s3-region=us-east-1" \
+    "serving.kserve.io/s3-verifyssl=0" \
+    "serving.kserve.io/s3-useanoncredential=false" \
+    "serving.kserve.io/s3-usevirtualbucket=false" || true
 done
 for ns in "${NS_MODEL_INGRESS}" "${NS_MODEL_EVAL}" "${NS_MODEL_SANDBOX}" "${NS_MODEL_TEST}"; do
   oc get secret minio-s3 -n "${ns}"
@@ -242,11 +253,29 @@ oc apply -k ./overlays/15-hardware-profile/
 
 # =============================================================================
 # Phase 15: Test serving (verified model)
-# Overlay: 16-test-serving (serving-rbac + optional LLMInferenceService catch-up)
-# publish-artifact already applies the patched CR in model-test on auto-pass.
+# Overlay: 16-test-serving — RBAC, network policies, LLMInferenceServiceConfig
+# Connection secret + LLMInferenceService: sed PLACEHOLDER from templates (see below).
+# publish-artifact also applies patched copies from git on auto-pass/review.
 # =============================================================================
-oc apply -k ./instances/model-test/serving-rbac/ -n "${NS_MODEL_TEST}"
-# oc apply -k ./overlays/16-test-serving/ -n "${NS_MODEL_TEST}"
+export MODEL_CONN_VERSION="${MODEL_CONN_VERSION:-d4xs2}"
+export MODEL_CONN_NAME="redhatai-qwen3-8b-fp8-dynamic-${MODEL_CONN_VERSION}"
+
+if [[ ! -f minio-s3-secret.yaml ]]; then
+  echo "minio-s3-secret.yaml missing; cp minio-s3-secret.yaml.template and edit credentials (Phase 4)" >&2
+else
+  MINIO_USER="$(awk -F': ' '/AWS_ACCESS_KEY_ID:/{print $2; exit}' minio-s3-secret.yaml | tr -d ' \"')"
+  MINIO_PASS="$(awk -F': ' '/AWS_SECRET_ACCESS_KEY:/{print $2; exit}' minio-s3-secret.yaml | tr -d ' \"')"
+  sed -e "s/PLACEHOLDER/${MODEL_CONN_VERSION}/g" \
+      -e "s/CHANGE_ME_MINIO_ROOT_USER/${MINIO_USER}/g" \
+      -e "s/CHANGE_ME_MINIO_ROOT_PASSWORD/${MINIO_PASS}/g" \
+    instances/model-test/model-connection-secret.yaml.template \
+    | oc apply -f - -n "${NS_MODEL_TEST}"
+fi
+sed "s/PLACEHOLDER/${MODEL_CONN_VERSION}/g" \
+  instances/model-test/qwen3-8b-fp8-verified.yaml \
+  | oc apply -f - -n "${NS_MODEL_TEST}"
+
+oc apply -k ./overlays/16-test-serving/ -n "${NS_MODEL_TEST}"
 oc get llminferenceservice -n "${NS_MODEL_TEST}"
 # oc wait --for=condition=Ready llminferenceservice -n "${NS_MODEL_TEST}" --timeout=900s
 #

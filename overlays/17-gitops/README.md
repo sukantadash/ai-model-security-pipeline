@@ -11,4 +11,4 @@ oc get application model-test-verified-models -n openshift-gitops
 oc describe application model-test-verified-models -n openshift-gitops
 ```
 
-After a pipeline pass, commit the updated `s3://` URI and version to `instances/model-test/llm-models/` — Argo CD promotes it to `model-test` automatically.
+After a pipeline pass, commit the updated `model-registry://` URI and version to `instances/model-test/qwen3-8b-fp8-verified.yaml` — Argo CD promotes it to `model-test` automatically.

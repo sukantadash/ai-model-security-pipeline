@@ -1,9 +1,7 @@
-# Phase 15: Deploy verified LLMInferenceService resources to model-test.
-# Prerequisites: Overlays 11–15 (RHOAI, gateway, hardware profile); see instances/model-test/README.md.
-# Promotion to model-prod is a later manual process.
+# Phase 15: Verified LLMInferenceService + test-user RBAC in model-test.
+# Prerequisites: Overlays 11–15; see instances/model-test/README.md.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - ../../instances/model-test/llm-models
-  - ../../instances/model-test/serving-rbac
+  - ../../instances/model-test

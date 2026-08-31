@@ -26,7 +26,7 @@ spec:
       default: ''
     - name: model-test-path
       type: string
-      default: instances/model-test/llm-models
+      default: instances/model-test
     - name: git-revision
       type: string
       default: ''
@@ -135,8 +135,8 @@ spec:
         PR="$(params.pipeline-run-name)"
         if [[ -z "${PR}" ]]; then PR="$(context.taskRun.name)"; fi
         VERSION="${PR: -5}"
-        # Serving URI references Model Registry; storage-initializer resolves to artifact s3:// URI.
-        URI="model-registry://${MODEL_ID}/${VERSION}"
+        # Match Model Registry deploy: s3 URI + ODH connection secret (not model-registry://).
+        URI="s3://models-verified/${MODEL_ID}/${VERSION}"
         OUT="/scratch/patched-test"
         APPLY="/scratch/patched-test-apply"
         rm -rf "${OUT}" "${APPLY}"
@@ -145,9 +145,11 @@ spec:
         export GIT_PATH="$(params.model-test-path)"
         export GIT_REVISION="$(params.git-revision)"
         export OUT_DIR="${OUT}"
-        unset NAME MODEL_NAME
+        unset NAME
+        export MODEL_NAME="${MODEL_ID}"
         export MODEL_URI="${URI}"
         export MODEL_VERSION="${VERSION}"
+        export REGISTERED_MODEL="${MODEL_ID}"
         export NAMESPACE="$(params.test-namespace)"
         /scripts/clone-and-patch-llmis.sh
         cp -a "${OUT}/." "${APPLY}/"
@@ -166,6 +168,11 @@ spec:
           echo "no patched model-test YAML; skip apply" >&2
           exit 0
         fi
+        MODEL_ID="$(params.model-id)"
+        PR="$(params.pipeline-run-name)"
+        if [[ -z "${PR}" ]]; then PR="$(context.taskRun.name)"; fi
+        VERSION="${PR: -5}"
+        CONN="${MODEL_ID}-${VERSION}"
         ENDPOINT="${AWS_ENDPOINT_URL:-${MINIO_ENDPOINT:-http://minio.minio-system.svc:9000}}"
         HTTPS=0
         case "${ENDPOINT}" in https://*) HTTPS=1 ;; esac
@@ -190,5 +197,17 @@ spec:
           "serving.kserve.io/s3-verifyssl=0" \
           "serving.kserve.io/s3-useanoncredential=false" \
           "serving.kserve.io/s3-usevirtualbucket=false" || true
+        oc create secret generic "${CONN}" -n "${NS}" \
+          --from-literal=AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
+          --from-literal=AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
+          --from-literal=AWS_DEFAULT_REGION="${AWS_REGION:-us-east-1}" \
+          --from-literal=AWS_S3_BUCKET=models-verified \
+          --from-literal=AWS_S3_ENDPOINT="${ENDPOINT}" \
+          --dry-run=client -o yaml | oc apply -f -
+        oc annotate secret "${CONN}" -n "${NS}" --overwrite \
+          "opendatahub.io/connection-type=s3" \
+          "opendatahub.io/connection-type-protocol=s3" \
+          "opendatahub.io/connection-type-ref=s3" \
+          "openshift.io/display-name=${CONN}" || true
         oc apply -n "${NS}" -f "${DIR}"
         echo "applied LLMInferenceService in ${NS}"

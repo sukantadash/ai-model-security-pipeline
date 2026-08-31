@@ -16,7 +16,7 @@
 | `model-registry-namespace` | param | Default `rhoai-model-registries` |
 | `git-url` | param | Git repo with serving YAML |
 | `model-sandbox-path` | param | Default `instances/model-sandbox` |
-| `model-test-path` | param | Default `instances/model-test/llm-models` |
+| `model-test-path` | param | Default `instances/model-test` |
 | `shared-data` | workspace | PVC `eval-workspace` — **weights only** |
 | `results` | workspace | Pod-local `emptyDir` for JSON before S3 upload; not shared across TaskRuns |
 

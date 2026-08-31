@@ -15,6 +15,9 @@
 #     oc apply -f minio-s3-secret.yaml -n "${ns}"
 #   done
 #
+# model-test ODH connection secret (verified serving). script.sh Phase 15 sed's
+# instances/model-test/model-connection-secret.yaml.template (PLACEHOLDER + minio creds).
+#
 # MinIO root (minio-system only — edit instances/minio/secret.yaml before overlay 05):
 #
 # Optional: git clone token for private git-url (key: token).

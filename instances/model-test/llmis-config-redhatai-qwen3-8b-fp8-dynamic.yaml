@@ -1,0 +1,13 @@
+# Mirrors LLMInferenceServiceConfig created by Model Registry deploy (minio-system example).
+# baseRefs on the LLMInferenceService point here for the vLLM CUDA single-node runtime.
+apiVersion: serving.kserve.io/v1alpha2
+kind: LLMInferenceServiceConfig
+metadata:
+  name: redhatai-qwen3-8b-fp8-dynamic
+  annotations:
+    opendatahub.io/template-name: v3-5-0-kserve-config-llm-single-node-template-nvidia-cuda
+spec:
+  template:
+    containers:
+      - name: main
+        image: registry.redhat.io/rhaii/vllm-cuda-rhel9@sha256:ba060ec145e1b7ac3a3b25b89fc75f7d146746156990ff5858235eaa9d158e32

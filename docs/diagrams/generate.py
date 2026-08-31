@@ -598,7 +598,7 @@ def gitops_promotion() -> str:
     parts.append(box(760, 230, 340, 90, "model-prod", "Not a pipeline output. Manual later.", FILL_GRAY, STROKE))
     parts.append(box(1120, 230, 280, 90, "Observability", "Prometheus, Grafana, KEDA.", FILL_GRAY, STROKE))
 
-    parts.append(T(40, 360, "GitOps manifests: instances/gitops/application-model-test.yaml + instances/model-test/llm-models/.", 12, MUTED))
+    parts.append(T(40, 360, "GitOps manifests: instances/gitops/application-model-test.yaml + instances/model-test/qwen3-8b-fp8-verified.yaml.", 12, MUTED))
     parts.append(T(40, 382, "Serving reads MinIO models-verified, not Hugging Face. Test-zone NetworkPolicy is intended to deny Hub egress.", 12, MUTED))
     return wrap(1440, 430, "\n".join(parts), "GitOps promotion from score gate to model-test")
 

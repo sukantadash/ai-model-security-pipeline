@@ -232,7 +232,7 @@ After a model passes the pipeline:
 2. Tekton `publish-artifact` promotes **weights only** to MinIO `s3://models-verified/<model-id>/<version>/`.
 3. Each subtask (and merge / score-gate) stores scan JSON at `s3://models-eval/<model-id>/<version>/scan-result/`. `archive-results` adds `manifest.json` in `finally`.
 4. Same task registers the model in **RHOAI Model Registry** (`customProperties`: `storage_uri`, `scan_uri`, `version`).
-5. GitOps manifest `instances/model-test/llm-models/qwen3-8b-fp8-verified.yaml` is updated with registry annotations + `s3://` URI.
+5. GitOps manifest `instances/model-test/qwen3-8b-fp8-verified.yaml` is updated with registry annotations + `model-registry://` URI.
 6. Argo CD syncs `LLMInferenceService` to `model-test`. Promotion to `model-prod` is a later manual process.
 
 ---
@@ -310,7 +310,7 @@ Before running `script.sh`:
 | ODF vs PVC-only for models? | ODF/NOOBAA for >10GB models                                                             |
 | Kata in sprint 1?           | Defer; use restricted SCC + NetworkPolicy first                                         |
 | Separate clusters per zone? | Single cluster for MVP; split later per HLD maturity path                               |
-| Which HF models to test?    | Start with `Qwen/Qwen3-0.6B` (see `instances/model-test/llm-models/qwen3-8b-fp8-verified.yaml`) |
+| Which HF models to test?    | Start with `Qwen/Qwen3-0.6B` (see `instances/model-test/qwen3-8b-fp8-verified.yaml`) |
 
 
 ---

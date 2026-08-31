@@ -1,3 +1,4 @@
+# Keep in sync with instances/model-test/namespace.yaml
 apiVersion: v1
 kind: Namespace
 metadata:

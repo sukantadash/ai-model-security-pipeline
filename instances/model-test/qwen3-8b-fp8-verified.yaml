@@ -1,0 +1,61 @@
+# Verified model — aligned with Model Registry deploy (see minio-system LLMInferenceService).
+# script.sh Phase 15 substitutes PLACEHOLDER with MODEL_CONN_VERSION (default d4xs2).
+# publish-artifact patches the same fields on auto-pass/review.
+apiVersion: serving.kserve.io/v1alpha2
+kind: LLMInferenceService
+metadata:
+  name: qwen3-8b-fp8
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+    security.platform/zone: test
+  annotations:
+    opendatahub.io/connection-path: redhatai-qwen3-8b-fp8-dynamic/PLACEHOLDER
+    opendatahub.io/connections: redhatai-qwen3-8b-fp8-dynamic-PLACEHOLDER
+    opendatahub.io/hardware-profile-name: gpu-profile
+    opendatahub.io/hardware-profile-namespace: redhat-ods-applications
+    opendatahub.io/model-type: generative
+    openshift.io/display-name: redhatai-qwen3-8b-fp8-dynamic - PLACEHOLDER
+    security.opendatahub.io/enable-auth: "false"
+    security.platform/verified: "true"
+    security.platform/source-pipeline: model-security-pipeline
+    security.platform/model-registry: rhoai-model-registries
+    security.platform/registered-model: redhatai-qwen3-8b-fp8-dynamic
+    security.platform/model-version: PLACEHOLDER
+spec:
+  baseRefs:
+    - name: redhatai-qwen3-8b-fp8-dynamic
+  replicas: 1
+  model:
+    name: redhatai-qwen3-8b-fp8-dynamic
+    uri: s3://models-verified/redhatai-qwen3-8b-fp8-dynamic/PLACEHOLDER
+  router:
+    gateway: {}
+    route: {}
+  template:
+    tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+    containers:
+      - name: main
+        env:
+          - name: VLLM_ADDITIONAL_ARGS
+            value: --disable-uvicorn-access-log
+        resources:
+          limits:
+            cpu: "4"
+            memory: 32Gi
+            nvidia.com/gpu: "1"
+          requests:
+            cpu: "2"
+            memory: 16Gi
+            nvidia.com/gpu: "1"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+            scheme: HTTPS
+          initialDelaySeconds: 180
+          periodSeconds: 30
+          timeoutSeconds: 30
+          failureThreshold: 5

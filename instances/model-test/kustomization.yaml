@@ -1,9 +1,13 @@
+# Serving bundle for overlay 16-test-serving (namespace: overlay 04-zones).
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 namespace: model-test
 
 resources:
-  - namespace.yaml
   - networkpolicy.yaml
+  - networkpolicy-router-apiserver.yaml
   - pipeline-apply-rbac.yaml
+  - serving-rbac.yaml
+  - llmis-config-redhatai-qwen3-8b-fp8-dynamic.yaml
+  # qwen3-8b-fp8-verified.yaml applied by script.sh Phase 15 (PLACEHOLDER → MODEL_CONN_VERSION)

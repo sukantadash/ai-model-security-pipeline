@@ -29,7 +29,7 @@ spec:
           - name: model-sandbox-path
             value: instances/model-sandbox
           - name: model-test-path
-            value: instances/model-test/llm-models
+            value: instances/model-test
         workspaces:
           - name: shared-data
             persistentVolumeClaim:

@@ -1,0 +1,16 @@
+# LLM-d router-scheduler watches InferencePool via kube-apiserver. OVN evaluates
+# traffic after DNAT to node:6443, so ClusterIP kubernetes:443 rules never match.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: router-scheduler-allow-kube-apiserver
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: llminferenceservice-router-scheduler
+  policyTypes:
+    - Egress
+  egress:
+    - {}

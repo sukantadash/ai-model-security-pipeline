@@ -7,6 +7,7 @@
     "instances/minio/secret.yaml": "CHANGE_ME_MINIO_ROOT_PASSWORD",
     "instances/model-registry/postgres-secret.yaml": "CHANGE_ME_MODEL_REGISTRY_DB_PASSWORD",
     "minio-s3-secret.yaml.template": "CHANGE_ME_MINIO_ROOT_PASSWORD",
+    "instances/model-test/model-connection-secret.yaml.template": "CHANGE_ME_MINIO_ROOT_PASSWORD",
     "quay-secret.yaml.template": "<base64(username:password)>",
     "instances/gateway/gateway.yaml": "REPLACE_WITH_CLUSTER_APPS_DOMAIN"
   }

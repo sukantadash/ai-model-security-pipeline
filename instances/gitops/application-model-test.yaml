@@ -15,7 +15,9 @@ spec:
   source:
     repoURL: https://github.com/sukantadash/ai-model-security-pipeline.git
     targetRevision: main
-    path: instances/model-test/llm-models
+    path: instances/model-test
+    directory:
+      include: qwen3-8b-fp8-verified.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: model-test

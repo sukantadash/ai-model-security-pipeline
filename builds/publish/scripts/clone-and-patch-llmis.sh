@@ -42,4 +42,5 @@ python3 "${SCRIPT_DIR}/patch_llmis.py" "${SRC}" \
   ${NAME:+--name "${NAME}"} \
   ${MODEL_NAME:+--model-name "${MODEL_NAME}"} \
   ${MODEL_VERSION:+--model-version "${MODEL_VERSION}"} \
+  ${REGISTERED_MODEL:+--registered-model "${REGISTERED_MODEL}"} \
   ${NAMESPACE:+--namespace "${NAMESPACE}"}

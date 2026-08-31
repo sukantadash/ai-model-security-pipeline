@@ -32,6 +32,7 @@ def patch_doc(
     model_uri: str,
     namespace: str | None,
     model_version: str | None = None,
+    registered_model: str | None = None,
 ) -> dict:
     out = copy.deepcopy(doc)
     meta = out.setdefault("metadata", {})
@@ -44,11 +45,17 @@ def patch_doc(
         ann["openshift.io/display-name"] = name
     if model_version:
         ann["security.platform/model-version"] = model_version
+    reg_model = registered_model or model_name
+    if reg_model and model_version:
+        ann["opendatahub.io/connection-path"] = f"{reg_model}/{model_version}"
+        ann["opendatahub.io/connections"] = f"{reg_model}-{model_version}"
+        ann["openshift.io/display-name"] = f"{reg_model} - {model_version}"
+        ann.setdefault("security.platform/registered-model", reg_model)
     spec = out.setdefault("spec", {})
     model = spec.setdefault("model", {})
     if model_name:
         model["name"] = model_name
-    model["uri"] = model_uri
+    model["uri"] = model_uri.rstrip("/")
     return out
 
 
@@ -79,6 +86,7 @@ def patch_path(
     model_uri: str,
     namespace: str | None,
     model_version: str | None = None,
+    registered_model: str | None = None,
 ) -> int:
     docs = load_docs(src)
     patched = 0
@@ -93,6 +101,7 @@ def patch_path(
                     model_uri=model_uri,
                     namespace=namespace,
                     model_version=model_version,
+                    registered_model=registered_model,
                 )
             )
             patched += 1
@@ -115,6 +124,11 @@ def main() -> int:
     p.add_argument("--model-uri", required=True, help="spec.model.uri")
     p.add_argument("--namespace", default="", help="metadata.namespace (optional)")
     p.add_argument("--model-version", default="", help="annotation security.platform/model-version")
+    p.add_argument(
+        "--registered-model",
+        default="",
+        help="registered model id for ODH connection-path/connections annotations",
+    )
     args = p.parse_args()
     src = Path(args.src)
     if not src.exists():
@@ -138,6 +152,7 @@ def main() -> int:
             model_uri=args.model_uri,
             namespace=ns,
             model_version=args.model_version or None,
+            registered_model=args.registered_model or None,
         )
         print(f"patched {path} -> {dest}")
     print(f"patched {total} LLMInferenceService document(s)")

@@ -46,7 +46,7 @@ class PatchLlmisTest(unittest.TestCase):
             self.assertEqual(doc["spec"]["model"]["name"], "redhatai-qwen3-8b-fp8-dynamic")
             self.assertEqual(
                 doc["spec"]["model"]["uri"],
-                "s3://models-ingress/redhatai-qwen3-8b-fp8-dynamic/",
+                "s3://models-ingress/redhatai-qwen3-8b-fp8-dynamic",
             )
             self.assertEqual(doc["metadata"]["annotations"]["openshift.io/display-name"], "eval-abcde")
 
@@ -65,8 +65,8 @@ metadata:
     security.platform/model-version: PLACEHOLDER
 spec:
   model:
-    uri: model-registry://redhatai-qwen3-8b-fp8-dynamic/PLACEHOLDER
-    name: RedHatAI/Qwen3-8B-FP8-dynamic
+    uri: s3://models-verified/redhatai-qwen3-8b-fp8-dynamic/PLACEHOLDER
+    name: redhatai-qwen3-8b-fp8-dynamic
 """
             )
             n = patch_path(
@@ -74,21 +74,33 @@ spec:
                 dest,
                 name=None,
                 model_name=None,
-                model_uri="model-registry://redhatai-qwen3-8b-fp8-dynamic/9djp2",
+                model_uri="s3://models-verified/redhatai-qwen3-8b-fp8-dynamic/9djp2",
                 namespace="model-test",
                 model_version="9djp2",
+                registered_model="redhatai-qwen3-8b-fp8-dynamic",
             )
             self.assertEqual(n, 1)
             doc = yaml.safe_load(dest.read_text())
             self.assertEqual(doc["metadata"]["name"], "qwen3-8b-fp8")
-            self.assertEqual(doc["spec"]["model"]["name"], "RedHatAI/Qwen3-8B-FP8-dynamic")
+            self.assertEqual(doc["spec"]["model"]["name"], "redhatai-qwen3-8b-fp8-dynamic")
             self.assertEqual(
                 doc["spec"]["model"]["uri"],
-                "model-registry://redhatai-qwen3-8b-fp8-dynamic/9djp2",
+                "s3://models-verified/redhatai-qwen3-8b-fp8-dynamic/9djp2",
             )
             self.assertEqual(doc["metadata"]["namespace"], "model-test")
-            self.assertEqual(doc["metadata"]["annotations"]["openshift.io/display-name"], "qwen3-8b-fp8-verified")
+            self.assertEqual(
+                doc["metadata"]["annotations"]["openshift.io/display-name"],
+                "redhatai-qwen3-8b-fp8-dynamic - 9djp2",
+            )
             self.assertEqual(doc["metadata"]["annotations"]["security.platform/model-version"], "9djp2")
+            self.assertEqual(
+                doc["metadata"]["annotations"]["opendatahub.io/connection-path"],
+                "redhatai-qwen3-8b-fp8-dynamic/9djp2",
+            )
+            self.assertEqual(
+                doc["metadata"]["annotations"]["opendatahub.io/connections"],
+                "redhatai-qwen3-8b-fp8-dynamic-9djp2",
+            )
 
     def test_find_under_dir(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -1,7 +1,0 @@
-# Verified models served in model-test after pipeline pass.
-# Promotion to model-prod is a separate manual process.
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-resources:
-  - qwen3-8b-fp8-verified.yaml

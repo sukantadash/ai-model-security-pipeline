@@ -26,7 +26,7 @@ spec:
       description: Path in git-url to sandbox manifests
     - name: model-test-path
       type: string
-      default: instances/model-test/llm-models
+      default: instances/model-test
       description: Path in git-url to verified serving manifests
     - name: git-revision
       type: string
