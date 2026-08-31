@@ -1,0 +1,27 @@
+# Operator NetworkPolicy model-registry-https-route only admits OpenShift
+# ingress namespaces and opendatahub.io/generated-namespace=true. model-eval
+# is neither, so publish-artifact timed out on :8443. Extra policies are OR'd.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: model-registry-from-model-eval
+  namespace: rhoai-model-registries
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+    app.kubernetes.io/name: model-registry-from-model-eval
+spec:
+  podSelector:
+    matchLabels:
+      app: model-registry
+      app.kubernetes.io/name: model-registry
+      component: model-registry
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: model-eval
+      ports:
+        - protocol: TCP
+          port: 8443

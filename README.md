@@ -108,7 +108,7 @@ Fetch Artifact → Static Scanning → Dynamic Scan → Capability Eval → Adve
 | 1 | Fetch and validate artifact | Clone from ingress PVC or object store; verify checksum and file type (Magika) |
 | 2 | Sequential security tasks | Four evaluation tasks with `runAfter` dependencies |
 | 3 | Score gate | Weighted composite `S_total`; dynamic-scan is a hard gate; routing auto-pass / review / reject |
-| 4 | Publish or reject | Auto-pass (`S_total` ≥ 85): promote and sign. Review (70–84): PipelineRun succeeds, publish skipped. Reject (< 70 or hard-gate): PipelineRun fails |
+| 4 | Publish or reject | Auto-pass (`S_total` ≥ 75) and review (55–74): promote to `models-verified` and register. Reject (< 55 or hard-gate): PipelineRun fails, no publish |
 
 ### 5.2 Evaluation Tasks
 
@@ -198,15 +198,15 @@ Dynamic-scan is a hard gate and is **not** in the weight.
 
 | `S_total` | Routing | PipelineRun | Publish |
 |-----------|---------|-------------|---------|
-| ≥ 85 | Auto-pass | Succeeded | `publish-artifact` runs |
-| 70–84 | Manual review | Succeeded | skipped (`passed=false`) |
-| < 70, missing JSON, or dynamic hard-gate | Reject | Failed | skipped |
+| ≥ 75 | Auto-pass | Succeeded | `publish-artifact` runs |
+| 55–74 | Manual review | Succeeded | `publish-artifact` runs |
+| < 55, missing JSON, or dynamic hard-gate | Reject | Failed | skipped |
 
 Finding schema, penalty tables, and `policy.json` behavior: [docs/detailed-design.md](docs/detailed-design.md#5-score-gate).
 
 #### Publish artifact
 
-Runs only when `score-gate.results.passed` is `true` (auto-pass). Promotes weights to `models-verified` and registers the model.
+Runs when score-gate routing is `auto-pass` or `review`. Promotes weights to `models-verified` and registers the model. Reject does not publish.
 
 #### Archive results
 

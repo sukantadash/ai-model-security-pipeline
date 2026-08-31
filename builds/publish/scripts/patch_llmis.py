@@ -24,18 +24,30 @@ def is_llmis(doc: dict) -> bool:
     return isinstance(doc, dict) and str(doc.get("kind") or "") == "LLMInferenceService"
 
 
-def patch_doc(doc: dict, *, name: str, model_name: str, model_uri: str, namespace: str | None) -> dict:
+def patch_doc(
+    doc: dict,
+    *,
+    name: str | None,
+    model_name: str | None,
+    model_uri: str,
+    namespace: str | None,
+    model_version: str | None = None,
+) -> dict:
     out = copy.deepcopy(doc)
     meta = out.setdefault("metadata", {})
-    meta["name"] = name
+    if name:
+        meta["name"] = name
     if namespace:
         meta["namespace"] = namespace
     ann = meta.setdefault("annotations", {})
-    if "openshift.io/display-name" in ann:
+    if name and "openshift.io/display-name" in ann:
         ann["openshift.io/display-name"] = name
+    if model_version:
+        ann["security.platform/model-version"] = model_version
     spec = out.setdefault("spec", {})
     model = spec.setdefault("model", {})
-    model["name"] = model_name
+    if model_name:
+        model["name"] = model_name
     model["uri"] = model_uri
     return out
 
@@ -58,14 +70,30 @@ def find_llmis_files(root: Path) -> list[Path]:
     return found
 
 
-def patch_path(src: Path, dest: Path, *, name: str, model_name: str, model_uri: str, namespace: str | None) -> int:
+def patch_path(
+    src: Path,
+    dest: Path,
+    *,
+    name: str | None,
+    model_name: str | None,
+    model_uri: str,
+    namespace: str | None,
+    model_version: str | None = None,
+) -> int:
     docs = load_docs(src)
     patched = 0
     out_docs = []
     for doc in docs:
         if is_llmis(doc):
             out_docs.append(
-                patch_doc(doc, name=name, model_name=model_name, model_uri=model_uri, namespace=namespace)
+                patch_doc(
+                    doc,
+                    name=name,
+                    model_name=model_name,
+                    model_uri=model_uri,
+                    namespace=namespace,
+                    model_version=model_version,
+                )
             )
             patched += 1
         else:
@@ -82,10 +110,11 @@ def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("src", help="File or directory containing LLMInferenceService YAML")
     p.add_argument("--out-dir", required=True, help="Directory to write patched YAML")
-    p.add_argument("--name", required=True, help="metadata.name")
-    p.add_argument("--model-name", required=True, help="spec.model.name")
+    p.add_argument("--name", default="", help="metadata.name (omit to keep template name)")
+    p.add_argument("--model-name", default="", help="spec.model.name (omit to keep template name)")
     p.add_argument("--model-uri", required=True, help="spec.model.uri")
     p.add_argument("--namespace", default="", help="metadata.namespace (optional)")
+    p.add_argument("--model-version", default="", help="annotation security.platform/model-version")
     args = p.parse_args()
     src = Path(args.src)
     if not src.exists():
@@ -102,7 +131,13 @@ def main() -> int:
     for path in files:
         dest = out_dir / path.name
         total += patch_path(
-            path, dest, name=args.name, model_name=args.model_name, model_uri=args.model_uri, namespace=ns
+            path,
+            dest,
+            name=args.name or None,
+            model_name=args.model_name or None,
+            model_uri=args.model_uri,
+            namespace=ns,
+            model_version=args.model_version or None,
         )
         print(f"patched {path} -> {dest}")
     print(f"patched {total} LLMInferenceService document(s)")

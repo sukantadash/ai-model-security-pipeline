@@ -1,6 +1,26 @@
 apiVersion: tekton.dev/v1
 kind: TaskRun
 metadata:
+  generateName: unit-static-scan-merge-
+  labels:
+    test: static-scan-merge-unit
+    ai.security.pipeline/stage: static-scan
+spec:
+  serviceAccountName: model-eval-pipeline
+  taskRef:
+    name: static-scan-merge
+  workspaces:
+  - name: results
+    emptyDir: {}
+  params:
+  - name: model-id
+    value: unit-test
+  - name: pipeline-run-name
+    value: model-security-unit1
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
   generateName: unit-dynamic-scan-merge-
   labels:
     test: dynamic-scan-merge-unit

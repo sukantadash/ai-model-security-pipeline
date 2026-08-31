@@ -9,8 +9,7 @@
 #
 # 2) Zone S3 credentials (see minio-s3-secret.yaml.template):
 #    oc create secret generic minio-s3 -n model-ingress --from-literal=... (template)
-#    oc create secret generic minio-s3 -n model-eval --from-literal=...
-#    oc create secret generic minio-s3 -n model-test --from-literal=...
+#    Repeat for model-eval, model-sandbox, and model-test.
 #
 # 3) Quay pull secret + HF token — see instances/secrets/README.md
 apiVersion: kustomize.config.k8s.io/v1beta1

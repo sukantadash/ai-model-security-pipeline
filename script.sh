@@ -1,11 +1,14 @@
 # AI Model Security Pipeline — manual deployment runbook
-# Reference: HIGH-LEVEL-DESIGN.md, IMPLEMENTATION-PLAN.md
+# Design: README.md, docs/architecture.md, docs/pipeline.md, IMPLEMENTATION-PLAN.md
+# Overlays: overlays/00-gpu-operators … 17-gitops
 #
 # Prerequisites:
 #   oc login ...
 #   GPU nodes: infra/prereqs/ocp-gpu-setup/README.md
 #   Quay org + secrets configured (quay-secret.yaml from template)
-#   Hugging Face token for model-ingress
+#   Hugging Face token for gated models (model-ingress)
+#   git-url in pipelinerun-example.yaml must be a cloneable HTTPS repo with
+#   instances/model-sandbox/LLMInferenceService.yaml pushed
 #
 # Run phase-by-phase: copy/paste each phase block into your shell (do not run bash script.sh end-to-end).
 
@@ -21,6 +24,7 @@ export NS_MINIO="${NS_MINIO:-minio-system}"
 
 # =============================================================================
 # Phase 0: Cluster GPU prerequisites
+# Overlay: 00-gpu-operators, 01-gpu-instances
 # =============================================================================
 # Step 1 — MachineSet (see infra/prereqs/ocp-gpu-setup/README.md):
 #   cd infra/prereqs/ocp-gpu-setup && ./machine-set/gpu-machineset.sh
@@ -37,14 +41,15 @@ oc get nodes -l nvidia.com/gpu.present=true
 oc get clusterpolicy gpu-cluster-policy -n nvidia-gpu-operator
 
 # =============================================================================
-# Phase 1: Operators (Pipelines, GitOps, Service Mesh, RHOAI, …)
+# Phase 1: Operators (Pipelines, GitOps, Service Mesh, RHOAI, Kata, …)
+# Overlay: 02-operators
 # =============================================================================
 oc apply -k ./overlays/02-operators/
 #
-# Wait for CSV Succeeded (includes Sandboxed Containers for Kata — dedicated namespace):
+# Wait for CSV Succeeded (Sandboxed Containers uses a dedicated namespace):
 oc get csv -A | grep -E 'pipelines|gitops|rhods|servicemesh|kuadrant|sandboxed'
 oc get csv -n openshift-sandboxed-containers-operator
-oc get runtimeclass kata   # after KataConfig is applied (Phase 3)
+# RuntimeClass kata appears after KataConfig (Phase 3).
 #
 # Manual: approve any Manual InstallPlans if required
 oc get installplan -A
@@ -52,23 +57,24 @@ oc get installplan -A
 
 # =============================================================================
 # Phase 2: Zones — namespaces, NetworkPolicies, pipeline RBAC
+# Overlay: 04-zones (eval/sandbox/test + pipeline-rbac). Design table lists this
+# as Phase 3; apply before overlay 03 so namespaces exist before KataConfig reboots.
+# model-ingress: pass namespace on the oc command (kustomization has no namespace:).
 # model-sandbox persists (pipeline never creates/deletes the namespace).
 # =============================================================================
 oc apply -k ./instances/model-ingress/ -n "${NS_MODEL_INGRESS}"
-oc apply -k ./instances/model-eval/ -n "${NS_MODEL_EVAL}"
-oc apply -k ./instances/model-sandbox/
-oc apply -k ./instances/model-test/ -n "${NS_MODEL_TEST}"
-oc apply -k ./instances/pipeline-rbac/ -n "${NS_MODEL_EVAL}"
+oc apply -k ./overlays/04-zones/
 #
 # Verify:
 oc get ns "${NS_MODEL_INGRESS}" "${NS_MODEL_EVAL}" "${NS_MODEL_SANDBOX}" "${NS_MODEL_TEST}"
 oc get sa model-eval-pipeline -n "${NS_MODEL_EVAL}"
+oc get networkpolicy -n "${NS_MODEL_EVAL}" | grep -E 'serve-llm|pipeline-oc' || true
 oc get networkpolicy,role,rolebinding -n "${NS_MODEL_SANDBOX}"
 oc get role,rolebinding -n "${NS_MODEL_TEST}" | grep model-eval-pipeline || true
 
-
 # =============================================================================
 # Phase 3: Operator instances (Tekton Chains, Service Mesh, KataConfig, …)
+# Overlay: 03-operator-instances
 # =============================================================================
 oc apply -k ./overlays/03-operator-instances/
 #
@@ -77,22 +83,22 @@ oc describe kataconfig cluster-kataconfig
 oc get runtimeclass kata
 
 # =============================================================================
-# Phase 4: MinIO + eval workspace PVC
+# Phase 4: MinIO + eval workspace PVC + zone secrets
+# Overlay: 05-storage
 # =============================================================================
 # Edit instances/minio/secret.yaml (root password), then:
-oc apply -k ./instances/minio/ -n "${NS_MINIO}"
+oc apply -k ./overlays/05-storage/
 # MinIO reads minio-root only at pod start — restart after any password change.
 oc rollout restart deployment/minio -n "${NS_MINIO}"
 oc rollout status deployment/minio -n "${NS_MINIO}" --timeout=300s
 oc wait --for=condition=Available deployment/minio -n "${NS_MINIO}" --timeout=600s
 oc wait --for=condition=complete job/minio-bucket-init -n "${NS_MINIO}" --timeout=300s
 oc get route minio-api minio-console -n "${NS_MINIO}"
-oc apply -f ./instances/storage/eval-workspace-pvc.yaml -n "${NS_MODEL_EVAL}"
+# Overlay 05 creates eval-workspace in model-eval. Ingress/test PVCs are per-zone:
 oc apply -f ./instances/storage/ingress-models-pvc.yaml -n "${NS_MODEL_INGRESS}"
 oc apply -f ./instances/storage/verified-models-pvc.yaml -n "${NS_MODEL_TEST}"
-
-# Restore placeholder in instances/minio/secret.yaml
-sed -i '' 's/MINIO_ROOT_PASSWORD: paassword/MINIO_ROOT_PASSWORD: CHANGE_ME_MINIO_ROOT_PASSWORD/' instances/minio/secret.yaml
+# Restore the committed placeholder if you edited instances/minio/secret.yaml:
+#   git checkout -- instances/minio/secret.yaml
 
 #
 # Secrets (see instances/secrets/README.md):
@@ -100,25 +106,25 @@ sed -i '' 's/MINIO_ROOT_PASSWORD: paassword/MINIO_ROOT_PASSWORD: CHANGE_ME_MINIO
 for ns in "${NS_MODEL_INGRESS}" "${NS_MODEL_EVAL}" "${NS_MODEL_SANDBOX}" "${NS_MODEL_TEST}"; do
   oc apply -f minio-s3-secret.yaml -n "${ns}"
 done
-#
-# Verify secrets:
 for ns in "${NS_MODEL_INGRESS}" "${NS_MODEL_EVAL}" "${NS_MODEL_SANDBOX}" "${NS_MODEL_TEST}"; do
   oc get secret minio-s3 -n "${ns}"
 done
-# Optional private git clone (serve-llm-start / publish):
+# Optional private git clone (serve-llm-start / publish-artifact):
 # oc create secret generic git-auth -n "${NS_MODEL_EVAL}" --from-literal=token=<github-pat>
 # cp quay-secret.yaml.template quay-secret.yaml             # edit credentials first
 oc apply -f quay-secret.yaml -n "${NS_BUILD_IMAGE}"
 oc secrets link builder sudash-modelpipeline-pull-secret -n "${NS_BUILD_IMAGE}"
 oc apply -f quay-secret.yaml -n "${NS_MODEL_INGRESS}"
 oc apply -f quay-secret.yaml -n "${NS_MODEL_EVAL}"
+oc apply -f quay-secret.yaml -n "${NS_MODEL_TEST}"
 #
-# Hugging Face token (ingress only) — replace <your-token>:
+# Hugging Face token (ingress only, gated models) — replace <your-token>:
 # oc create secret generic hf-token -n "${NS_MODEL_INGRESS}" \
 #   --from-literal=HF_TOKEN=<your-token>
 
 # =============================================================================
 # Phase 5: Build custom scanner images
+# Overlay: 06-builds  Images: docs/pipeline.md "Scanner images"
 # =============================================================================
 oc apply -k ./overlays/06-builds/ -n "${NS_BUILD_IMAGE}"
 oc apply -f quay-secret.yaml -n "${NS_BUILD_IMAGE}"
@@ -130,47 +136,59 @@ done
 
 oc get istag -n "${NS_BUILD_IMAGE}" | grep ai-security
 
-# Cross-namespace pull (model-ingress Job + model-eval Tekton + model-sandbox KServe):
+# Cross-namespace pull (ingress Job + eval Tekton + sandbox KServe):
 for ns in "${NS_MODEL_INGRESS}" "${NS_MODEL_EVAL}" "${NS_MODEL_SANDBOX}"; do
   oc policy add-role-to-group system:image-puller "system:serviceaccounts:${ns}" -n "${NS_BUILD_IMAGE}"
 done
+# After script changes under builds/, rebuild that image before the next PipelineRun:
+#   oc start-build ai-security-dynamic-test --from-dir=builds/dynamic-test --follow -n "${NS_BUILD_IMAGE}"
 
 # =============================================================================
 # Phase 6: Tekton Tasks
+# Overlay: 07-tekton-tasks  DAG: docs/pipeline.md
 # =============================================================================
 oc apply -k ./overlays/07-tekton-tasks/ -n "${NS_MODEL_EVAL}"
 
 # =============================================================================
 # Phase 7: Tekton Pipeline
+# Overlay: 08-tekton-pipeline
 # =============================================================================
 oc apply -k ./overlays/08-tekton-pipeline/ -n "${NS_MODEL_EVAL}"
 
 # =============================================================================
 # Phase 8: Tekton Triggers
+# Overlay: 09-tekton-triggers
 # =============================================================================
 oc apply -k ./overlays/09-tekton-triggers/ -n "${NS_MODEL_EVAL}"
+oc get eventlistener,route -n "${NS_MODEL_EVAL}"
+# Optional webhook test:
+#   curl -X POST "https://$(oc get route el-model-security-listener -n "${NS_MODEL_EVAL}" -o jsonpath='{.spec.host}')" \
+#     -H 'Content-Type: application/json' \
+#     -d '{"model_id":"redhatai-qwen3-8b-fp8-dynamic"}'
 
 # =============================================================================
 # Phase 9: Tekton Chains (SLSA / Cosign signing)
+# Overlay: 10-tekton-chains
 # =============================================================================
 oc apply -k ./overlays/10-tekton-chains/
 
 # =============================================================================
-# Phase 10: Test — HF download → PipelineRun (RedHatAI/Qwen3-8B-FP8-dynamic)
+# Phase 10: Fetch + unit TaskRuns (fixtures; no live vLLM)
+# Live PipelineRun (serve-llm + publish to Model Registry) is after Phase 11.
 # =============================================================================
 # Local (no cluster) — run these first after code changes:
 #   pip3 install pyyaml
 #   python3 builds/publish/scripts/test_patch_llmis.py
-#   bash builds/dynamic-test/scripts/run-unit-tests.sh
 #   python3 builds/dynamic-test/scripts/test_isolated_inspect.py
-#
-# serve-llm-start clones this repo over HTTPS and patches
-# instances/model-sandbox/LLMInferenceService.yaml. Push that path to GitHub
-# before a live PipelineRun:
-#   git-url default: https://github.com/sukantadash/ai-model-security-pipeline.git
+#   bash builds/dynamic-test/scripts/run-unit-tests.sh
+#   bash builds/capability-eval/scripts/run-unit-tests.sh
+#   bash builds/adversarial-test/scripts/run-unit-tests.sh
 #
 oc apply -f ./instances/model-ingress-fetch/model-fetch-job.yaml -n "${NS_MODEL_INGRESS}"
 oc wait --for=condition=complete job/model-fetch -n "${NS_MODEL_INGRESS}" --timeout=7200s
+
+# Re-apply Tasks if you changed instances/tekton-tasks/ since Phase 6:
+oc apply -k ./overlays/07-tekton-tasks/ -n "${NS_MODEL_EVAL}"
 #
 # Unit-test static-scan TaskRuns (malware, vulnerabilities, license-compliance):
 oc create configmap fixture-static-malware -n "${NS_MODEL_EVAL}" \
@@ -188,7 +206,6 @@ oc wait --for=condition=Succeeded taskrun -l test=static-scan-unit -n "${NS_MODE
 oc get taskrun -l test=static-scan-unit -n "${NS_MODEL_EVAL}"
 #
 # Unit-test dynamic-scan TaskRuns (isolated-runtime, behavior, abnormal-resources, basic-inference):
-# Local (no cluster): bash builds/dynamic-test/scripts/run-unit-tests.sh
 oc create configmap fixture-dynamic-isolated-runtime -n "${NS_MODEL_EVAL}" \
   --from-file=README.txt=./builds/dynamic-test/testdata/isolated-runtime/README.txt \
   --dry-run=client -o yaml | oc apply -f -
@@ -201,15 +218,11 @@ oc create configmap fixture-dynamic-abnormal-resources -n "${NS_MODEL_EVAL}" \
 oc create configmap fixture-dynamic-basic-inference -n "${NS_MODEL_EVAL}" \
   --from-file=README.txt=./builds/dynamic-test/testdata/basic-inference/README.txt \
   --dry-run=client -o yaml | oc apply -f -
-oc apply -k ./overlays/07-tekton-tasks/ -n "${NS_MODEL_EVAL}"
 oc create -f ./instances/tekton-tasks/dynamic-scan-unit-taskruns.yaml -n "${NS_MODEL_EVAL}"
 oc wait --for=condition=Succeeded taskrun -l test=dynamic-scan-unit -n "${NS_MODEL_EVAL}" --timeout=600s
 oc get taskrun -l test=dynamic-scan-unit -n "${NS_MODEL_EVAL}"
-# Merge after subtasks (shared RWO PVC). Full file also has later-stage merges — apply those after each stage.
-
 #
 # Unit-test capability-eval TaskRuns (quality, performance-cost, stability-check, anomaly-bias-detection):
-# Local (no cluster): bash builds/capability-eval/scripts/run-unit-tests.sh
 oc create configmap fixture-capability-quality -n "${NS_MODEL_EVAL}" \
   --from-file=quality-scores.json=./builds/capability-eval/testdata/quality/quality-scores.json \
   --dry-run=client -o yaml | oc apply -f -
@@ -222,14 +235,11 @@ oc create configmap fixture-capability-stability -n "${NS_MODEL_EVAL}" \
 oc create configmap fixture-capability-anomaly-bias -n "${NS_MODEL_EVAL}" \
   --from-file=baseline-delta.json=./builds/capability-eval/testdata/anomaly-bias/baseline-delta.json \
   --dry-run=client -o yaml | oc apply -f -
-oc apply -k ./overlays/07-tekton-tasks/ -n "${NS_MODEL_EVAL}"
-oc delete task capability-eval -n "${NS_MODEL_EVAL}" --ignore-not-found
 oc create -f ./instances/tekton-tasks/capability-eval-unit-taskruns.yaml -n "${NS_MODEL_EVAL}"
 oc wait --for=condition=Succeeded taskrun -l test=capability-eval-unit -n "${NS_MODEL_EVAL}" --timeout=600s
 oc get taskrun -l test=capability-eval-unit -n "${NS_MODEL_EVAL}"
 #
 # Unit-test adversarial-test TaskRuns (prompt-injection, jailbreak-guardrail-bypass, harmful-content-bias):
-# Local (no cluster): bash builds/adversarial-test/scripts/run-unit-tests.sh
 oc create configmap fixture-adversarial-prompt-injection -n "${NS_MODEL_EVAL}" \
   --from-file=injection-probes.json=./builds/adversarial-test/testdata/prompt-injection/injection-probes.json \
   --dry-run=client -o yaml | oc apply -f -
@@ -239,45 +249,24 @@ oc create configmap fixture-adversarial-jailbreak -n "${NS_MODEL_EVAL}" \
 oc create configmap fixture-adversarial-harmful-content-bias -n "${NS_MODEL_EVAL}" \
   --from-file=harmful-bias-probes.json=./builds/adversarial-test/testdata/harmful-content-bias/harmful-bias-probes.json \
   --dry-run=client -o yaml | oc apply -f -
-oc apply -k ./overlays/07-tekton-tasks/ -n "${NS_MODEL_EVAL}"
-oc delete task red-team -n "${NS_MODEL_EVAL}" --ignore-not-found
 oc create -f ./instances/tekton-tasks/adversarial-test-unit-taskruns.yaml -n "${NS_MODEL_EVAL}"
 oc wait --for=condition=Succeeded taskrun -l test=adversarial-test-unit -n "${NS_MODEL_EVAL}" --timeout=600s
 oc get taskrun -l test=adversarial-test-unit -n "${NS_MODEL_EVAL}"
-# Scan JSON is uploaded to s3://models-eval/unit-test/unit1/scan-result/
-# (static-*.json, dynamic-*.json, capability-*.json, adversarial-*.json, score.json).
-# PipelineRun scan JSON uses s3://models-eval/<model-id>/<version>/scan-result/.
-
-
-# List unit-test JSON from MinIO (requires mc + minio-s3 secret):
-# oc run cat-unit-results --rm -i --restart=Never -n "${NS_MODEL_EVAL}" \
-#   --image=image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest \
-#   --overrides='...'  # source minio-s3 and: mc ls pipeline/models-eval/unit-test/unit1/scan-result/
 #
-
-
-
-# Full pipeline (git-url is in pipelinerun-example.yaml):
-# Confirm sandbox is empty of a leftover eval-* CR, then:
-oc get llminferenceservice -n "${NS_MODEL_SANDBOX}"
-oc get secret minio-s3 -n "${NS_MODEL_SANDBOX}"
-oc get pipeline.tekton.dev model-security-pipeline -n "${NS_MODEL_EVAL}" \
-  -o jsonpath='{.spec.params[?(@.name=="git-url")].default}{"\n"}'
-oc create -f ./instances/tekton-pipeline/pipelinerun-example.yaml -n "${NS_MODEL_EVAL}"
-#
-# Watch:
-oc get pipelinerun -n "${NS_MODEL_EVAL}" -w
-#
-# After serve-llm-start: CR is in model-sandbox (not model-eval):
-#   oc get llminferenceservice,svc,pod -n "${NS_MODEL_SANDBOX}"
-# After finally: CR deleted, namespace remains:
-#   oc get ns "${NS_MODEL_SANDBOX}"
-#   oc get llminferenceservice -n "${NS_MODEL_SANDBOX}"
-# Auto-pass applies a CR in model-test from the patched git path (publish-artifact).
-# Overlay 16 is optional if you still want GitOps/manual apply of the same YAML.
+# Merge + score-gate units (concat S3 JSON from the unit-test prefix, then score):
+oc create -f ./instances/tekton-tasks/merge-and-gate-unit-taskruns.yaml -n "${NS_MODEL_EVAL}"
+oc wait --for=condition=Succeeded taskrun -l test=static-scan-merge-unit -n "${NS_MODEL_EVAL}" --timeout=300s
+oc wait --for=condition=Succeeded taskrun -l test=dynamic-scan-merge-unit -n "${NS_MODEL_EVAL}" --timeout=300s
+oc wait --for=condition=Succeeded taskrun -l test=capability-eval-merge-unit -n "${NS_MODEL_EVAL}" --timeout=300s
+oc wait --for=condition=Succeeded taskrun -l test=adversarial-test-merge-unit -n "${NS_MODEL_EVAL}" --timeout=300s
+oc wait --for=condition=Succeeded taskrun -l test=score-gate-unit -n "${NS_MODEL_EVAL}" --timeout=300s
+# Unit JSON: s3://models-eval/unit-test/unit1/scan-result/
+# PipelineRun JSON: s3://models-eval/<model-id>/<version>/scan-result/
 
 # =============================================================================
 # Phase 11: RHOAI platform (DSC + dashboard + Model Registry)
+# Overlay: 11-rhoai, 12-rhoai-dashboard
+# Required before publish-artifact can register the model.
 # =============================================================================
 # Edit instances/model-registry/postgres-secret.yaml before apply.
 oc apply -k ./overlays/11-rhoai/
@@ -290,8 +279,27 @@ oc wait --for=condition=Available deployment/model-registry-db -n rhoai-model-re
 oc wait --for=condition=Available modelregistry/model-registry -n rhoai-model-registries --timeout=600s
 oc get modelregistry -n rhoai-model-registries
 
+# Live pipeline (docs/pipeline.md DAG). Edit git-url in pipelinerun-example.yaml
+# to a reachable HTTPS repo; push instances/model-sandbox/LLMInferenceService.yaml.
+# Confirm sandbox is empty of a leftover eval-* CR, then:
+oc get llminferenceservice -n "${NS_MODEL_SANDBOX}"
+oc get secret minio-s3 -n "${NS_MODEL_SANDBOX}"
+oc get pipeline.tekton.dev model-security-pipeline -n "${NS_MODEL_EVAL}" \
+  -o jsonpath='{.spec.params[?(@.name=="git-url")].default}{"\n"}'
+oc create -f ./instances/tekton-pipeline/pipelinerun-example.yaml -n "${NS_MODEL_EVAL}"
+oc get pipelinerun -n "${NS_MODEL_EVAL}" -w
+#
+# After serve-llm-start: CR is in model-sandbox (not model-eval):
+#   oc get llminferenceservice,svc,pod -n "${NS_MODEL_SANDBOX}"
+# After finally: CR deleted, namespace remains:
+#   oc get ns "${NS_MODEL_SANDBOX}"
+#   oc get llminferenceservice -n "${NS_MODEL_SANDBOX}"
+# Auto-pass: publish-artifact copies weights to models-verified, registers Model
+# Registry, and oc apply's the patched LLMInferenceService in model-test.
+
 # =============================================================================
 # Phase 12: Inference gateway + TLS
+# Overlay: 13-gateway
 # =============================================================================
 # Lab/demo cluster FQDNs must not be committed. Set hostname from this cluster:
 #   APPS_DOMAIN=$(oc get ingresses.config/cluster -o jsonpath='{.spec.domain}')
@@ -306,6 +314,7 @@ oc get certificate -n openshift-ingress
 
 # =============================================================================
 # Phase 13: Authorino
+# Overlay: 14-authorino
 # =============================================================================
 oc annotate svc/authorino-authorino-authorization \
   service.beta.openshift.io/serving-cert-secret-name=authorino-server-cert \
@@ -314,17 +323,18 @@ oc apply -k ./overlays/14-authorino/
 
 # =============================================================================
 # Phase 14: GPU hardware profile
+# Overlay: 15-hardware-profile
 # =============================================================================
 oc apply -k ./overlays/15-hardware-profile/
-# 
-# Patch gateway to allow model-test routes (included in instances/gateway/gateway.yaml by default):
-# Only needed if you removed model-test from gateway.yaml or use additional namespaces
+# Gateway already allows model-test routes (instances/gateway/gateway.yaml).
+# Patch only if you removed model-test or add more namespaces.
 
 # =============================================================================
 # Phase 15: Test serving (verified model)
-# publish-artifact already oc apply's the patched LLMInferenceService in model-test
-# on auto-pass. Overlay 16 is for GitOps/manual catch-up of the same manifests.
+# Overlay: 16-test-serving (serving-rbac + optional LLMInferenceService catch-up)
+# publish-artifact already applies the patched CR in model-test on auto-pass.
 # =============================================================================
+oc apply -k ./instances/model-test/serving-rbac/ -n "${NS_MODEL_TEST}"
 # oc apply -k ./overlays/16-test-serving/ -n "${NS_MODEL_TEST}"
 oc get llminferenceservice -n "${NS_MODEL_TEST}"
 # oc wait --for=condition=Ready llminferenceservice -n "${NS_MODEL_TEST}" --timeout=900s
@@ -338,8 +348,9 @@ curl -sS "https://${GATEWAY_HOST}/${NS_MODEL_TEST}/qwen3-8b-fp8/v1/models" \
 
 # =============================================================================
 # Phase 16: GitOps promotion to model-test
-# Promotion to model-prod is a later manual process (not this Application).
+# Overlay: 17-gitops  Promotion to model-prod is a later manual process.
 # =============================================================================
+# Edit instances/gitops/application-model-test.yaml spec.source.repoURL / targetRevision.
 oc apply -k ./overlays/17-gitops/
 oc get application model-test-verified-models -n openshift-gitops
 
@@ -358,11 +369,8 @@ oc get application model-test-verified-models -n openshift-gitops
 # oc delete -k ./overlays/08-tekton-pipeline/ -n "${NS_MODEL_EVAL}"
 # oc delete -k ./overlays/07-tekton-tasks/ -n "${NS_MODEL_EVAL}"
 # oc delete -k ./overlays/06-builds/ -n "${NS_BUILD_IMAGE}"
-# oc delete -k ./instances/minio/ -n "${NS_MINIO}"
-# oc delete -k ./instances/pipeline-rbac/ -n "${NS_MODEL_EVAL}"
-# oc delete -k ./instances/model-test/ -n "${NS_MODEL_TEST}"
-# oc delete -k ./instances/model-sandbox/
-# oc delete -k ./instances/model-eval/ -n "${NS_MODEL_EVAL}"
+# oc delete -k ./overlays/05-storage/
+# oc delete -k ./overlays/04-zones/
 # oc delete -k ./instances/model-ingress/ -n "${NS_MODEL_INGRESS}"
 # oc delete -k ./overlays/03-operator-instances/
 # oc delete -k ./overlays/02-operators/

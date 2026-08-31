@@ -23,7 +23,7 @@
 <line x1="560" y1="140" x2="600" y2="140" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
 <line x1="840" y1="140" x2="880" y2="140" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
 <line x1="1120" y1="140" x2="1160" y2="140" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
-<text x="40" y="220" fill="#3E8635" font-size="14" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">On auto-pass only</text>
+<text x="40" y="220" fill="#3E8635" font-size="14" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">On auto-pass or review</text>
 <rect x="40" y="240" width="320" height="80" rx="6" fill="#E9F7E6" stroke="#3E8635" stroke-width="1"/>
 <text x="52" y="262" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">6. models-verified</text>
 <text x="52" y="280" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">s3://models-verified/&lt;id&gt;/&lt;ver&gt;/  weights</text>

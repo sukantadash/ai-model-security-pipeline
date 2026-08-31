@@ -1,0 +1,18 @@
+# kube-rbac-proxy on the Model Registry Service authorizes GET services/model-registry.
+# The operator Role registry-user-model-registry already encodes that SAR.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: model-eval-pipeline-registry-user
+  namespace: rhoai-model-registries
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+    app.kubernetes.io/name: model-eval-pipeline-registry-user
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: registry-user-model-registry
+subjects:
+  - kind: ServiceAccount
+    name: model-eval-pipeline
+    namespace: model-eval

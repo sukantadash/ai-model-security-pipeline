@@ -151,13 +151,13 @@ def architecture_overview() -> str:
     parts.append(T(368, 296, "DAG: fetch -> static(3) -> dynamic(4) -> capability(4) -> adversarial(3) -> gate", 12, INK, "600"))
     parts.append(T(368, 318, "S_total = 0.40*S_static + 0.35*S_capability + 0.25*S_redteam", 12, MUTED))
     parts.append(R(368, 338, 200, 76, GREEN, GREEN, 0, 6))
-    parts.append(T(468, 368, ">= 85  Auto-pass", 14, "#fff", "700", "middle"))
+    parts.append(T(468, 368, ">= 75  Auto-pass", 14, "#fff", "700", "middle"))
     parts.append(T(468, 388, "Sign, promote, serve", 11, "#fff", "400", "middle"))
     parts.append(R(584, 338, 200, 76, GOLD, GOLD, 0, 6))
-    parts.append(T(684, 368, "70-84  Review", 14, INK, "700", "middle"))
-    parts.append(T(684, 388, "Succeeds, no publish", 11, INK, "400", "middle"))
+    parts.append(T(684, 368, "55-74  Review", 14, INK, "700", "middle"))
+    parts.append(T(684, 388, "Succeeds, publish", 11, INK, "400", "middle"))
     parts.append(R(800, 338, 200, 76, RED, RED, 0, 6))
-    parts.append(T(900, 368, "< 70 / hard gate", 14, "#fff", "700", "middle"))
+    parts.append(T(900, 368, "< 55 / hard gate", 14, "#fff", "700", "middle"))
     parts.append(T(900, 388, "Reject, stay quarantined", 11, "#fff", "400", "middle"))
 
     parts.append(box(348, 452, 328, 100, "Score gate + Tekton Chains", "Policy-as-code. SLSA provenance. Cosign on PipelineRun.", FILL_BLUE, BLUE))
@@ -509,7 +509,7 @@ def storage_flow() -> str:
     for x in (280, 560, 840, 1120):
         parts.append(al(x, y + 40, x + 40, y + 40))
 
-    parts.append(T(40, 220, "On auto-pass only", 14, GREEN, "700"))
+    parts.append(T(40, 220, "On auto-pass or review", 14, GREEN, "700"))
     parts.append(box(40, 240, 320, 80, "6. models-verified", "s3://models-verified/<id>/<ver>/  weights", FILL_GREEN, GREEN))
     parts.append(box(400, 240, 320, 80, "7. Model Registry", "POST registered_models + URIs", FILL_GREEN, GREEN))
     parts.append(box(760, 240, 320, 80, "8. GitOps LLMInferenceService", "model-test KServe + vLLM", FILL_GREEN, GREEN))
@@ -552,24 +552,24 @@ def score_gate() -> str:
 
     parts.append(R(40, 250, 1180, 70, FILL_GRAY, STROKE, 1, 8))
     parts.append(T(60, 280, "score-gate downloads scan-result/*.json, writes score.json, uploads. Exits 1 only when routing=reject (after the file is written).", 13, INK, "600"))
-    parts.append(T(60, 302, "publish-artifact when tasks.score-gate.results.passed == true.", 12, MUTED))
+    parts.append(T(60, 302, "publish-artifact when routing is auto-pass or review.", 12, MUTED))
 
     parts.append(R(40, 350, 380, 140, GREEN, GREEN, 0, 8))
-    parts.append(T(230, 400, ">= 85   Auto-pass", 20, "#fff", "700", "middle"))
+    parts.append(T(230, 400, ">= 75   Auto-pass", 20, "#fff", "700", "middle"))
     parts.append(T(230, 430, "Pipeline succeeded. Publish + register.", 13, "#fff", "400", "middle"))
     parts.append(T(230, 454, "GitOps may serve in model-test.", 12, "#fff", "400", "middle"))
 
     parts.append(R(440, 350, 380, 140, GOLD, GOLD, 0, 8))
-    parts.append(T(630, 400, "70-84   Review", 20, INK, "700", "middle"))
-    parts.append(T(630, 430, "Pipeline succeeded. passed=false.", 13, INK, "400", "middle"))
-    parts.append(T(630, 454, "No promote. Human decision.", 12, INK, "400", "middle"))
+    parts.append(T(630, 400, "55-74   Review", 20, INK, "700", "middle"))
+    parts.append(T(630, 430, "Pipeline succeeded. Publish + register.", 13, INK, "400", "middle"))
+    parts.append(T(630, 454, "Human review flag on registry.", 12, INK, "400", "middle"))
 
     parts.append(R(840, 350, 380, 140, RED, RED, 0, 8))
-    parts.append(T(1030, 392, "< 70  or  hard gate", 18, "#fff", "700", "middle"))
+    parts.append(T(1030, 392, "< 55  or  hard gate", 18, "#fff", "700", "middle"))
     parts.append(T(1030, 420, "or missing required JSON", 14, "#fff", "400", "middle"))
     parts.append(T(1030, 448, "Pipeline failed. Stay quarantined.", 13, "#fff", "400", "middle"))
 
-    parts.append(T(40, 530, "License needle: missing/copyleft -40 => S_static=60 => S_total=84 (review). Deny AGPL/SSPL/NC -80 => S_static=20 => S_total=68 (reject).", 12, MUTED))
+    parts.append(T(40, 530, "License needle: missing/copyleft -40 => S_static=60 => S_total=84 (auto-pass). Deny AGPL/SSPL/NC -80 => S_static=20 => S_total=68 (review).", 12, MUTED))
     parts.append(T(40, 552, "Immediate-fail (Task, not only score): ModelAudit exec/eval/os.system/pickle, ClamAV FOUND, tool missing / empty SBOM.", 12, MUTED))
     parts.append(T(40, 574, "Known gap: missing capability/adversarial/Falco/Kepler fixtures emit [] (silent 100 / pass) on a real HF tree.", 12, MUTED))
     return wrap(1280, 620, "\n".join(parts), "Score gate formula and routing")

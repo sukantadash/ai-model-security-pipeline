@@ -32,7 +32,7 @@ fetch-artifact
   -> quality | performance-cost | stability-check | anomaly-bias-detection  -> capability-eval (merge)
   -> prompt-injection | jailbreak-guardrail-bypass | harmful-content-bias  -> adversarial-test (merge)
   -> score-gate
-  -> publish-artifact   when score-gate.results.passed == true
+  -> publish-artifact   when routing is auto-pass or review
 
 finally: serve-llm-stop, archive-results
 ```
@@ -101,7 +101,7 @@ HTTP clients against `model-endpoint`. Garak / PyRIT / Promptfoo / LLM Guard are
 |---------------|------|--------|
 | `serve-llm-start` | After static-scan; all later tasks wait | Clone git, patch+apply `LLMInferenceService` in `model-sandbox`; result `endpoint-url` |
 | `score-gate` | After adversarial merge | Writes `score.json`; Task fails only on `routing=reject` |
-| `publish-artifact` | `when: passed == true` | Weights to `models-verified`; register MR; apply patched CR in `model-test` |
+| `publish-artifact` | `when: routing in auto-pass, review` | Weights to `models-verified`; register MR; apply patched CR in `model-test` |
 | `serve-llm-stop` | `finally` | Deletes the sandbox `LLMInferenceService` (namespace stays) |
 | `archive-results` | `finally` (always) | `manifest.json` in the same scan-result prefix |
 

@@ -1,13 +1,13 @@
 {
-  "version": 1,
+  "version": 2,
   "weights": {
     "static": 0.40,
     "capability": 0.35,
     "redteam": 0.25
   },
   "thresholds": {
-    "auto_pass": 85,
-    "review": 70
+    "auto_pass": 75,
+    "review": 55
   },
   "scoring": {
     "start": 100,

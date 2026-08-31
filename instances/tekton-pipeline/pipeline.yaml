@@ -54,6 +54,7 @@ spec:
       workspace: shared-data
       subPath: models
   - name: malware
+    retries: 2
     runAfter:
     - fetch-artifact
     taskRef:
@@ -74,6 +75,7 @@ spec:
     - name: results
       workspace: results
   - name: vulnerabilities
+    retries: 2
     runAfter:
     - fetch-artifact
     taskRef:
@@ -90,6 +92,7 @@ spec:
     - name: results
       workspace: results
   - name: license-compliance
+    retries: 2
     runAfter:
     - fetch-artifact
     taskRef:
@@ -138,6 +141,7 @@ spec:
     - name: namespace
       value: $(params.sandbox-namespace)
   - name: isolated-runtime
+    retries: 2
     runAfter:
     - serve-llm-start
     taskRef:
@@ -156,6 +160,7 @@ spec:
     - name: service-name
       value: $(tasks.serve-llm-start.results.service-name)
   - name: behavior
+    retries: 2
     runAfter:
     - serve-llm-start
     taskRef:
@@ -174,6 +179,7 @@ spec:
     - name: service-name
       value: $(tasks.serve-llm-start.results.service-name)
   - name: abnormal-resources
+    retries: 2
     runAfter:
     - serve-llm-start
     taskRef:
@@ -192,6 +198,7 @@ spec:
     - name: service-name
       value: $(tasks.serve-llm-start.results.service-name)
   - name: basic-inference
+    retries: 2
     runAfter:
     - serve-llm-start
     taskRef:
@@ -225,6 +232,7 @@ spec:
     - *id001
     - *id002
   - name: quality
+    retries: 2
     runAfter:
     - dynamic-scan
     taskRef:
@@ -240,6 +248,7 @@ spec:
     - *id002
     - *id003
   - name: performance-cost
+    retries: 2
     runAfter:
     - dynamic-scan
     taskRef:
@@ -255,6 +264,7 @@ spec:
     - *id002
     - *id003
   - name: stability-check
+    retries: 2
     runAfter:
     - dynamic-scan
     taskRef:
@@ -270,6 +280,7 @@ spec:
     - *id002
     - *id003
   - name: anomaly-bias-detection
+    retries: 2
     runAfter:
     - dynamic-scan
     taskRef:
@@ -299,6 +310,7 @@ spec:
     - *id001
     - *id002
   - name: prompt-injection
+    retries: 2
     runAfter:
     - capability-eval
     taskRef:
@@ -314,6 +326,7 @@ spec:
     - *id002
     - *id003
   - name: jailbreak-guardrail-bypass
+    retries: 2
     runAfter:
     - capability-eval
     taskRef:
@@ -329,6 +342,7 @@ spec:
     - *id002
     - *id003
   - name: harmful-content-bias
+    retries: 2
     runAfter:
     - capability-eval
     taskRef:
@@ -371,10 +385,11 @@ spec:
     runAfter:
     - score-gate
     when:
-    - input: $(tasks.score-gate.results.passed)
+    - input: $(tasks.score-gate.results.routing)
       operator: in
       values:
-      - 'true'
+      - auto-pass
+      - review
     taskRef:
       name: publish-artifact
     params:

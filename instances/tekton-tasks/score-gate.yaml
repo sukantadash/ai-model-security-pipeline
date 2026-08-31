@@ -19,7 +19,7 @@ spec:
     default: ''
   results:
   - name: passed
-    description: true only on auto-pass (S_total ≥ 85 and dynamic hard gate passed)
+    description: true only on auto-pass (S_total ≥ 75 and dynamic hard gate passed)
   - name: routing
     description: auto-pass | review | reject
   - name: score-file
@@ -28,6 +28,7 @@ spec:
   steps:
   - name: download
     image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    imagePullPolicy: IfNotPresent
     envFrom:
     - secretRef:
         name: minio-s3
@@ -65,6 +66,7 @@ spec:
     onError: continue
   - name: upload
     image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    imagePullPolicy: IfNotPresent
     envFrom:
     - secretRef:
         name: minio-s3
@@ -79,7 +81,7 @@ spec:
       FILE="$(workspaces.results.path)/score.json"
       s3_put_scan_result "${MODEL_ID}" "${VERSION}" "${FILE}"
   - name: fail-if-prior-failed
-    image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    image: $(params.image)
     script: |
       #!/usr/bin/env bash
       set -euo pipefail

@@ -13,7 +13,7 @@ Enterprises are pulling LLM weights from Hugging Face and vendors into productio
 This demo shows a fail-closed, three-zone pipeline on Red Hat OpenShift that treats every artifact as untrusted until it earns a signed attestation — then serves it on Red Hat OpenShift AI.
 
 1. Ingress (`model-ingress`): Hugging Face / vendor weights land behind Envoy, NetworkPolicy, and object storage. A Tekton Trigger fires on upload.
-2. Evaluation (`model-eval`): OpenShift Pipelines runs static scan (malware, CVE, license), dynamic scan in Sandboxed Containers (hard gate), GPU capability eval, and adversarial probes (injection, jailbreak, harmful content). A policy score gate routes auto-pass (>=85) / review (70-84) / reject (<70). Tekton Chains + Cosign attach SLSA provenance. Rejected weights never leave the eval zone.
+2. Evaluation (`model-eval`): OpenShift Pipelines runs static scan (malware, CVE, license), dynamic scan in Sandboxed Containers (hard gate), GPU capability eval, and adversarial probes (injection, jailbreak, harmful content). A policy score gate routes auto-pass (>=75) / review (55-74) / reject (<55). Tekton Chains + Cosign attach SLSA provenance. Rejected weights never leave the eval zone.
 3. Test (`model-test`): Auto-pass models register in the OpenShift AI Model Registry. OpenShift GitOps syncs a KServe/vLLM LLMInferenceService. Live chat is only for models that passed.
 
 The live contrast: a poisoned pickle is blocked on screen; a clean model is signed, promoted, and answered from OpenShift AI. Scanner images are RHEL UBI 9. The stack is kustomize overlays plus a runbook — ready to wrap as an RHDP catalog item.
@@ -29,7 +29,7 @@ This demo is the control plane they are missing:
 - Risk reduction: malware, license, CVE, runtime breakout, and adversarial findings are scored before any user talks to the model.
 - Fail closed: below threshold or a dynamic hard-gate finding, the pipeline fails and weights stay quarantined. Nothing is signed. Nothing is served.
 - Audit and reuse: every run leaves scan JSON, a composite score, and SLSA provenance. Same pattern for banks, telcos, public sector, and ISVs — swap the model, keep the zones.
-- Time to safe serving: auto-pass (>=85) promotes through GitOps to OpenShift AI instead of a weeks-long spreadsheet review.
+- Time to safe serving: auto-pass (>=75) promotes through GitOps to OpenShift AI instead of a weeks-long spreadsheet review.
 - Platform leverage: OpenShift and OpenShift AI as the AI supply-chain gate, not only the inference runtime.
 
 ## Platforms (form)

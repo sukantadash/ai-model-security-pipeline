@@ -15,7 +15,7 @@
 | Untrusted weights | MinIO `models-ingress/<model-id>/` | cluster S3 | HF fetch Job writes here |
 | Eval workspace | PVC `eval-workspace` | `model-eval` | `/models` only — no scan JSON |
 | Scan JSON | MinIO `models-eval/<model-id>/<version>/scan-result/` | S3 | Per-subtask + merges + `score.json` |
-| Verified weights | MinIO `models-verified/<model-id>/<version>/` | S3 | Publish only on auto-pass |
+| Verified weights | MinIO `models-verified/<model-id>/<version>/` | S3 | Publish on auto-pass or review |
 | Attestations | MinIO `attestations/` | S3 | Tekton Chains target |
 | Serving pointer | RHOAI Model Registry | `rhoai-model-registries` | `storage_uri`, `scan_uri`, `version` |
 
@@ -60,11 +60,11 @@ Ingress may use HTTPS to the Hub. Eval must not.
 
 ## Model Registry and serving
 
-On auto-pass, `publish-artifact`:
+On auto-pass or review, `publish-artifact`:
 
-1. Refuses unless `score.json` has `passed=true` and `routing=auto-pass`.
+1. Refuses unless `score.json` routing is `auto-pass` or `review`.
 2. Copies weights to `s3://models-verified/<model-id>/<version>/`.
-3. `POST /api/model_registry/v1alpha3/registered_models` with storage and scan URIs.
+3. `POST /api/model_registry/v1alpha3/registered_models` with storage URI, scan URI, and routing.
 
 OpenShift GitOps then syncs `LLMInferenceService` in `model-test` (registry annotations + `s3://` URI). See [GitOps promotion](diagrams/gitops-promotion.svg).
 

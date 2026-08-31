@@ -48,6 +48,7 @@ spec:
     onError: continue
   - name: upload
     image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    imagePullPolicy: IfNotPresent
     envFrom:
     - secretRef:
         name: minio-s3
@@ -62,7 +63,7 @@ spec:
       FILE="$(workspaces.results.path)/capability-quality.json"
       s3_put_scan_result "${MODEL_ID}" "${VERSION}" "${FILE}"
   - name: fail-if-prior-failed
-    image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    image: $(params.image)
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
@@ -119,6 +120,7 @@ spec:
     onError: continue
   - name: upload
     image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    imagePullPolicy: IfNotPresent
     envFrom:
     - secretRef:
         name: minio-s3
@@ -133,7 +135,7 @@ spec:
       FILE="$(workspaces.results.path)/capability-performance-cost.json"
       s3_put_scan_result "${MODEL_ID}" "${VERSION}" "${FILE}"
   - name: fail-if-prior-failed
-    image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    image: $(params.image)
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
@@ -190,6 +192,7 @@ spec:
     onError: continue
   - name: upload
     image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    imagePullPolicy: IfNotPresent
     envFrom:
     - secretRef:
         name: minio-s3
@@ -204,7 +207,7 @@ spec:
       FILE="$(workspaces.results.path)/capability-stability.json"
       s3_put_scan_result "${MODEL_ID}" "${VERSION}" "${FILE}"
   - name: fail-if-prior-failed
-    image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    image: $(params.image)
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
@@ -261,6 +264,7 @@ spec:
     onError: continue
   - name: upload
     image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    imagePullPolicy: IfNotPresent
     envFrom:
     - secretRef:
         name: minio-s3
@@ -275,7 +279,7 @@ spec:
       FILE="$(workspaces.results.path)/capability-anomaly-bias.json"
       s3_put_scan_result "${MODEL_ID}" "${VERSION}" "${FILE}"
   - name: fail-if-prior-failed
-    image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    image: $(params.image)
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
@@ -312,6 +316,7 @@ spec:
   steps:
   - name: download
     image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    imagePullPolicy: IfNotPresent
     envFrom:
     - secretRef:
         name: minio-s3
@@ -389,6 +394,7 @@ spec:
       echo -n "${OUT}" > "$(results.result-file.path)"
   - name: upload
     image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    imagePullPolicy: IfNotPresent
     envFrom:
     - secretRef:
         name: minio-s3

@@ -30,16 +30,28 @@ def items(doc):
         return [doc]
     return []
 
+def port_is_https(p):
+    if not isinstance(p, dict):
+        return False
+    raw = p.get("port")
+    if raw is None:
+        return True
+    if isinstance(raw, bool):
+        return False
+    if isinstance(raw, (int, float)) or (isinstance(raw, str) and raw.isdigit()):
+        try:
+            return int(raw) == 443
+        except (TypeError, ValueError):
+            return False
+    return str(raw).lower() in ("https", "https-443")
+
+
 def allows_public_https(np_doc):
     for pol in items(np_doc):
         spec = pol.get("spec") or {}
         for rule in spec.get("egress") or []:
             ports = rule.get("ports") or []
-            port_ok = not ports or any(
-                int(p.get("port") or 0) == 443 or str(p.get("port") or "") == "https"
-                for p in ports
-                if isinstance(p, dict)
-            )
+            port_ok = not ports or any(port_is_https(p) for p in ports)
             if not port_ok:
                 continue
             for dest in rule.get("to") or []:

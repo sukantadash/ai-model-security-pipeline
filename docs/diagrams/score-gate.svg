@@ -22,20 +22,20 @@
 <line x1="1080" y1="210" x2="1080" y2="250" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
 <rect x="40" y="250" width="1180" height="70" rx="8" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
 <text x="60" y="280" fill="#151515" font-size="13" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">score-gate downloads scan-result/*.json, writes score.json, uploads. Exits 1 only when routing=reject (after the file is written).</text>
-<text x="60" y="302" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">publish-artifact when tasks.score-gate.results.passed == true.</text>
+<text x="60" y="302" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">publish-artifact when routing is auto-pass or review.</text>
 <rect x="40" y="350" width="380" height="140" rx="8" fill="#3E8635" stroke="#3E8635" stroke-width="0"/>
-<text x="230" y="400" fill="#fff" font-size="20" font-weight="700" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">&gt;= 85   Auto-pass</text>
+<text x="230" y="400" fill="#fff" font-size="20" font-weight="700" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">&gt;= 75   Auto-pass</text>
 <text x="230" y="430" fill="#fff" font-size="13" font-weight="400" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Pipeline succeeded. Publish + register.</text>
 <text x="230" y="454" fill="#fff" font-size="12" font-weight="400" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">GitOps may serve in model-test.</text>
 <rect x="440" y="350" width="380" height="140" rx="8" fill="#F0AB00" stroke="#F0AB00" stroke-width="0"/>
-<text x="630" y="400" fill="#151515" font-size="20" font-weight="700" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">70-84   Review</text>
-<text x="630" y="430" fill="#151515" font-size="13" font-weight="400" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Pipeline succeeded. passed=false.</text>
-<text x="630" y="454" fill="#151515" font-size="12" font-weight="400" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">No promote. Human decision.</text>
+<text x="630" y="400" fill="#151515" font-size="20" font-weight="700" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">55-74   Review</text>
+<text x="630" y="430" fill="#151515" font-size="13" font-weight="400" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Pipeline succeeded. Publish + register.</text>
+<text x="630" y="454" fill="#151515" font-size="12" font-weight="400" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Human review flag on registry.</text>
 <rect x="840" y="350" width="380" height="140" rx="8" fill="#C9190B" stroke="#C9190B" stroke-width="0"/>
-<text x="1030" y="392" fill="#fff" font-size="18" font-weight="700" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">&lt; 70  or  hard gate</text>
+<text x="1030" y="392" fill="#fff" font-size="18" font-weight="700" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">&lt; 55  or  hard gate</text>
 <text x="1030" y="420" fill="#fff" font-size="14" font-weight="400" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">or missing required JSON</text>
 <text x="1030" y="448" fill="#fff" font-size="13" font-weight="400" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Pipeline failed. Stay quarantined.</text>
-<text x="40" y="530" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">License needle: missing/copyleft -40 =&gt; S_static=60 =&gt; S_total=84 (review). Deny AGPL/SSPL/NC -80 =&gt; S_static=20 =&gt; S_total=68 (reject).</text>
+<text x="40" y="530" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">License needle: missing/copyleft -40 =&gt; S_static=60 =&gt; S_total=84 (auto-pass). Deny AGPL/SSPL/NC -80 =&gt; S_static=20 =&gt; S_total=68 (review).</text>
 <text x="40" y="552" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Immediate-fail (Task, not only score): ModelAudit exec/eval/os.system/pickle, ClamAV FOUND, tool missing / empty SBOM.</text>
 <text x="40" y="574" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Known gap: missing capability/adversarial/Falco/Kepler fixtures emit [] (silent 100 / pass) on a real HF tree.</text>
 </svg>

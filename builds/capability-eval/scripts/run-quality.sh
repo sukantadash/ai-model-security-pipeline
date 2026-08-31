@@ -79,7 +79,7 @@ if endpoint:
         raise SystemExit
     for item in prompts:
         bench = str(item.get("benchmark") or "mmlu").lower()
-        result = vllm_client.chat(endpoint, item.get("prompt") or "ping", max_tokens=16, timeout=120)
+        result = vllm_client.chat(endpoint, item.get("prompt") or "ping", max_tokens=128, timeout=120)
         if not result.get("ok"):
             findings.append({
                 "issue": f"llm endpoint unreachable: {result.get('error')}",
@@ -88,7 +88,7 @@ if endpoint:
             })
             print(json.dumps(findings))
             raise SystemExit
-        text = str(result.get("text") or "").lower()
+        text = vllm_client.visible_text(str(result.get("text") or "")).lower()
         expected = str(item.get("expected") or "").lower()
         hits.setdefault(bench, []).append(1.0 if expected and expected in text else 0.0)
     scores = {k: (sum(v) / len(v) if v else None) for k, v in hits.items()}

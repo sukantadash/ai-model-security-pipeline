@@ -591,7 +591,7 @@ Static-scan wraps the same objects in `{ "task", "subtask", "issues": [ ... ] }`
 | Tool | What the code does | Installed in the image? |
 |------|--------------------|-------------------------|
 | `aggregate-results.py` | Loads every `*.json` in the scan prefix. Scores static findings with the penalty table and caps; scores capability / red-team by risk; `critical`/`high` on `dynamic-scan.json` is a hard gate (not in `S_total`). Writes `score.json`. The aggregate step exits 1 only when `routing=reject`, after the file is written so the upload step still runs | Yes (copied into `ai-security-score-gate`) |
-| `policy.json` | Weights 0.40 / 0.35 / 0.25, auto-pass 85, review 70, static penalty families (CVE, license, ModelAudit, …), capability/red-team per-risk penalties, `dynamic_hard_gate_risks` | Yes (`/etc/score-gate/policy.json`) |
+| `policy.json` | Weights 0.40 / 0.35 / 0.25, auto-pass 75, review 55, static penalty families (CVE, license, ModelAudit, …), capability/red-team per-risk penalties, `dynamic_hard_gate_risks` | Yes (`/etc/score-gate/policy.json`) |
 | MinIO (`mc`) | Download scan prefix before aggregate; upload `score.json` after | No — those steps use the publish image |
 
 `S_static` starts at 100 and subtracts policy penalties. The static-scan TaskRun stops the pipeline only on **immediate fail** (ModelAudit critical `exec`/`eval`, ClamAV malware, required tool missing). License deny-list, copyleft, and CVEs continue so the composite can be computed:
@@ -604,11 +604,11 @@ Dynamic-scan is a hard gate and is **not** in the weight.
 
 | `S_total` | Routing | PipelineRun | Publish |
 |-----------|---------|-------------|---------|
-| ≥ 85 | Auto-pass | Succeeded | `publish-artifact` runs |
-| 70–84 | Manual review | Succeeded | skipped (`passed=false`) |
-| < 70, missing JSON, or dynamic hard-gate | Reject | Failed | skipped |
+| ≥ 75 | Auto-pass | Succeeded | `publish-artifact` runs |
+| 55–74 | Manual review | Succeeded | `publish-artifact` runs |
+| < 55, missing JSON, or dynamic hard-gate | Reject | Failed | skipped |
 
-License penalties are sized so they move the needle with capability and red team at 100: missing/copyleft (`−40` → `S_static=60` → `S_total=84`) → review; deny-list AGPL/SSPL/NC (`−80` → `S_static=20` → `S_total=68`) → reject.
+License penalties are sized so they move the needle with capability and red team at 100: missing/copyleft (`−40` → `S_static=60` → `S_total=84`) → auto-pass; deny-list AGPL/SSPL/NC (`−80` → `S_static=20` → `S_total=68`) → review.
 
 **Further improvements:** normalize on a single tool field (`tool` vs `tool_used`); treat missing capability / adversarial fixtures as `high` instead of a silent `[]` pass.
 
@@ -616,11 +616,11 @@ License penalties are sized so they move the needle with capability and red team
 
 # 6. Publish artifact
 
-Runs only when `score-gate.results.passed` is `true` (auto-pass).
+Runs when score-gate routing is `auto-pass` or `review`.
 
 | Tool | What the code does | Installed in the image? |
 |------|--------------------|-------------------------|
-| MinIO (`mc`) | Refuses promote unless `score.json` has `passed=true` and `routing=auto-pass`; copies weights to `s3://models-verified/<model-id>/<version>/`; writes `publish.json` into `scan-result/` | Yes (`ai-security-publish`) |
+| MinIO (`mc`) | Refuses promote unless `score.json` routing is `auto-pass` or `review`; copies weights to `s3://models-verified/<model-id>/<version>/`; writes `publish.json` into `scan-result/` | Yes (`ai-security-publish`) |
 | RHOAI Model Registry | `POST /api/model_registry/v1alpha3/registered_models` with storage and scan URIs | `curl` + `jq` in the publish image |
 | Cosign / Tekton Chains | Documented as the signing path; this Task does not invoke Cosign | No |
 

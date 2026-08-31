@@ -40,6 +40,7 @@ spec:
   steps:
   - name: clone-patch
     image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    imagePullPolicy: IfNotPresent
     env:
     - name: GIT_TOKEN
       valueFrom:
@@ -159,6 +160,7 @@ spec:
       echo "endpoint ${BASE} service ${NAME} namespace ${NS}"
   - name: upload
     image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    imagePullPolicy: IfNotPresent
     envFrom:
     - secretRef:
         name: minio-s3

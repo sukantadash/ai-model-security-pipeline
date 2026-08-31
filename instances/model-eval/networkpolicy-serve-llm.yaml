@@ -1,19 +1,45 @@
-# serve-llm-start/stop run `oc apply`/`oc delete` against the Kubernetes API.
-# OVN evaluates kube-apiserver after DNAT (node:6443), so ClusterIP:443 rules
-# never match. EventListener already uses unrestricted egress for the same reason.
-# Do not open this for all eval pods — isolated-runtime treats API reachability
-# as a critical finding.
+# Tasks that run `oc` against kube-apiserver. OVN evaluates the API after DNAT
+# (node:6443), so ClusterIP:443 rules never match. Isolated-runtime inspects
+# the sandbox serving pod, not these Tekton pods — unrestricted egress here
+# does not weaken the sandbox hard gate.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: serve-llm-allow-kube-apiserver
   labels:
     app.kubernetes.io/part-of: ai-model-security-pipeline
-    ai.security.pipeline/stage: serve-llm
 spec:
   podSelector:
-    matchLabels:
-      ai.security.pipeline/stage: serve-llm
+    matchExpressions:
+      - key: tekton.dev/pipelineTask
+        operator: In
+        values:
+          - serve-llm-start
+          - serve-llm-stop
+          - isolated-runtime
+          - behavior
+          - abnormal-resources
+          - publish-artifact
+  policyTypes:
+    - Egress
+  egress:
+    - {}
+---
+# Standalone TaskRuns (e2e publish / ad-hoc serve-llm) are not Pipeline tasks.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: pipeline-oc-allow-kube-apiserver-taskruns
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+spec:
+  podSelector:
+    matchExpressions:
+      - key: ai.security.pipeline/stage
+        operator: In
+        values:
+          - serve-llm
+          - publish-artifact
   policyTypes:
     - Egress
   egress:

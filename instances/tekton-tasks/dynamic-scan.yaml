@@ -48,13 +48,13 @@ spec:
         echo "unit fixture: skip cluster inspect"
         exit 0
       fi
-      oc get llminferenceservice "${NAME}" -n "${NS}" -o json > "${DIR}/llmis.json" || echo '{"kind":"Status"}' > "${DIR}/llmis.json"
-      oc get pods -n "${NS}" -l "app.kubernetes.io/name=${NAME}" -o json > "${DIR}/pods.json" || true
+      oc --request-timeout=20s get llminferenceservice "${NAME}" -n "${NS}" -o json > "${DIR}/llmis.json" || echo '{"kind":"Status"}' > "${DIR}/llmis.json"
+      oc --request-timeout=20s get pods -n "${NS}" -l "app.kubernetes.io/name=${NAME}" -o json > "${DIR}/pods.json" || true
       if [[ ! -s "${DIR}/pods.json" ]] || ! grep -q '"items"' "${DIR}/pods.json"; then
-        oc get pods -n "${NS}" -o json > "${DIR}/pods.json" || echo '{"items":[]}' > "${DIR}/pods.json"
+        oc --request-timeout=20s get pods -n "${NS}" -o json > "${DIR}/pods.json" || echo '{"items":[]}' > "${DIR}/pods.json"
       fi
-      oc get networkpolicy -n "${NS}" -o json > "${DIR}/networkpolicies.json" || echo '{"items":[]}' > "${DIR}/networkpolicies.json"
-      oc get events -n "${NS}" -o json > "${DIR}/events.json" || echo '{"items":[]}' > "${DIR}/events.json"
+      oc --request-timeout=20s get networkpolicy -n "${NS}" -o json > "${DIR}/networkpolicies.json" || echo '{"items":[]}' > "${DIR}/networkpolicies.json"
+      oc --request-timeout=20s get events -n "${NS}" -o json > "${DIR}/events.json" || echo '{"items":[]}' > "${DIR}/events.json"
     onError: continue
   - name: scan
     image: $(params.image)
@@ -77,6 +77,7 @@ spec:
     onError: continue
   - name: upload
     image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    imagePullPolicy: IfNotPresent
     envFrom:
     - secretRef:
         name: minio-s3
@@ -91,7 +92,7 @@ spec:
       FILE="$(workspaces.results.path)/dynamic-isolated-runtime.json"
       s3_put_scan_result "${MODEL_ID}" "${VERSION}" "${FILE}"
   - name: fail-if-prior-failed
-    image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    image: $(params.image)
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
@@ -147,8 +148,8 @@ spec:
         echo '{"items":[]}' > "${DIR}/pods.json"
         exit 0
       fi
-      oc get events -n "${NS}" -o json > "${DIR}/events.json" || echo '{"items":[]}' > "${DIR}/events.json"
-      oc get pods -n "${NS}" -o json > "${DIR}/pods.json" || echo '{"items":[]}' > "${DIR}/pods.json"
+      oc --request-timeout=20s get events -n "${NS}" -o json > "${DIR}/events.json" || echo '{"items":[]}' > "${DIR}/events.json"
+      oc --request-timeout=20s get pods -n "${NS}" -o json > "${DIR}/pods.json" || echo '{"items":[]}' > "${DIR}/pods.json"
     onError: continue
   - name: scan
     image: $(params.image)
@@ -174,6 +175,7 @@ spec:
     onError: continue
   - name: upload
     image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    imagePullPolicy: IfNotPresent
     envFrom:
     - secretRef:
         name: minio-s3
@@ -188,7 +190,7 @@ spec:
       FILE="$(workspaces.results.path)/dynamic-behavior.json"
       s3_put_scan_result "${MODEL_ID}" "${VERSION}" "${FILE}"
   - name: fail-if-prior-failed
-    image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    image: $(params.image)
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
@@ -243,7 +245,7 @@ spec:
         echo '{"items":[]}' > "${DIR}/pods.json"
         exit 0
       fi
-      oc get pods -n "${NS}" -o json > "${DIR}/pods.json" || echo '{"items":[]}' > "${DIR}/pods.json"
+      oc --request-timeout=20s get pods -n "${NS}" -o json > "${DIR}/pods.json" || echo '{"items":[]}' > "${DIR}/pods.json"
     onError: continue
   - name: scan
     image: $(params.image)
@@ -269,6 +271,7 @@ spec:
     onError: continue
   - name: upload
     image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    imagePullPolicy: IfNotPresent
     envFrom:
     - secretRef:
         name: minio-s3
@@ -283,7 +286,7 @@ spec:
       FILE="$(workspaces.results.path)/dynamic-abnormal-resources.json"
       s3_put_scan_result "${MODEL_ID}" "${VERSION}" "${FILE}"
   - name: fail-if-prior-failed
-    image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    image: $(params.image)
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
@@ -340,6 +343,7 @@ spec:
     onError: continue
   - name: upload
     image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    imagePullPolicy: IfNotPresent
     envFrom:
     - secretRef:
         name: minio-s3
@@ -354,7 +358,7 @@ spec:
       FILE="$(workspaces.results.path)/dynamic-basic-inference.json"
       s3_put_scan_result "${MODEL_ID}" "${VERSION}" "${FILE}"
   - name: fail-if-prior-failed
-    image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    image: $(params.image)
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
@@ -388,6 +392,7 @@ spec:
   steps:
   - name: download
     image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    imagePullPolicy: IfNotPresent
     envFrom:
     - secretRef:
         name: minio-s3
@@ -466,6 +471,7 @@ spec:
       echo -n "${OUT}" > "$(results.result-file.path)"
   - name: upload
     image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    imagePullPolicy: IfNotPresent
     envFrom:
     - secretRef:
         name: minio-s3

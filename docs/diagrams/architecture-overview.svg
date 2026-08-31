@@ -52,13 +52,13 @@
 <text x="368" y="296" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">DAG: fetch -&gt; static(3) -&gt; dynamic(4) -&gt; capability(4) -&gt; adversarial(3) -&gt; gate</text>
 <text x="368" y="318" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">S_total = 0.40*S_static + 0.35*S_capability + 0.25*S_redteam</text>
 <rect x="368" y="338" width="200" height="76" rx="6" fill="#3E8635" stroke="#3E8635" stroke-width="0"/>
-<text x="468" y="368" fill="#fff" font-size="14" font-weight="700" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">&gt;= 85  Auto-pass</text>
+<text x="468" y="368" fill="#fff" font-size="14" font-weight="700" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">&gt;= 75  Auto-pass</text>
 <text x="468" y="388" fill="#fff" font-size="11" font-weight="400" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Sign, promote, serve</text>
 <rect x="584" y="338" width="200" height="76" rx="6" fill="#F0AB00" stroke="#F0AB00" stroke-width="0"/>
-<text x="684" y="368" fill="#151515" font-size="14" font-weight="700" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">70-84  Review</text>
-<text x="684" y="388" fill="#151515" font-size="11" font-weight="400" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Succeeds, no publish</text>
+<text x="684" y="368" fill="#151515" font-size="14" font-weight="700" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">55-74  Review</text>
+<text x="684" y="388" fill="#151515" font-size="11" font-weight="400" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Succeeds, publish</text>
 <rect x="800" y="338" width="200" height="76" rx="6" fill="#C9190B" stroke="#C9190B" stroke-width="0"/>
-<text x="900" y="368" fill="#fff" font-size="14" font-weight="700" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">&lt; 70 / hard gate</text>
+<text x="900" y="368" fill="#fff" font-size="14" font-weight="700" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">&lt; 55 / hard gate</text>
 <text x="900" y="388" fill="#fff" font-size="11" font-weight="400" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Reject, stay quarantined</text>
 <rect x="348" y="452" width="328" height="100" rx="6" fill="#E7F1FA" stroke="#0066CC" stroke-width="1"/>
 <text x="360" y="474" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Score gate + Tekton Chains</text>

@@ -37,7 +37,26 @@ if path is not None:
 inspect_dir = (os.environ.get("SANDBOX_INSPECT_DIR") or "").strip()
 if inspect_dir:
     events_path = Path(inspect_dir) / "events.json"
-    suspicious = ("oomkill", "backoff", "crashloop", "failed", "unhealthy")
+    # Match Event.reason only. Substring "failed"/"unhealthy" matches normal
+    # startup probes and would hard-gate a healthy vLLM load.
+    suspicious_reasons = {
+        "oomkilled",
+        "evicted",
+        "crashloopbackoff",
+        "backoff",
+    }
+    pod_names = set()
+    pods_path = Path(inspect_dir) / "pods.json"
+    if pods_path.is_file():
+        try:
+            pods_doc = json.loads(pods_path.read_text() or "{}")
+        except json.JSONDecodeError:
+            pods_doc = {}
+        for pod in (pods_doc.get("items") if isinstance(pods_doc, dict) else []) or []:
+            if isinstance(pod, dict):
+                n = str((pod.get("metadata") or {}).get("name") or "")
+                if n:
+                    pod_names.add(n)
     if events_path.is_file():
         try:
             doc = json.loads(events_path.read_text() or "{}")
@@ -47,10 +66,13 @@ if inspect_dir:
         for ev in items or []:
             if not isinstance(ev, dict):
                 continue
-            msg = str(ev.get("message") or ev.get("reason") or "").lower()
-            if any(s in msg for s in suspicious):
+            obj = str((ev.get("involvedObject") or {}).get("name") or "")
+            if pod_names and obj not in pod_names:
+                continue
+            reason = str(ev.get("reason") or "").lower().replace(" ", "")
+            if reason in suspicious_reasons or "oomkill" in reason or "crashloop" in reason:
                 findings.append({
-                    "issue": f"sandbox pod event: {ev.get('reason') or msg[:80]}",
+                    "issue": f"sandbox pod event: {ev.get('reason') or reason}",
                     "risk": "high",
                     "tool_used": "falco",
                 })

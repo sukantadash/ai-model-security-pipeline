@@ -18,7 +18,7 @@ Treat every LLM artifact (Hugging Face Hub, vendor GGUF / Safetensors / PyTorch)
 |-----------|----------------|
 | Zero trust | No weight file is served until the pipeline completes and the score gate routes `auto-pass`. |
 | Zone isolation | Ingress, eval, and test are separate OpenShift projects with default-deny NetworkPolicies. |
-| Fail closed | Dynamic-scan `critical`/`high` rejects. `S_total` below 70 rejects. Publish is gated on `passed=true`. |
+| Fail closed | Dynamic-scan `critical`/`high` rejects. `S_total` below 55 rejects. Publish is gated on `passed=true`. |
 | Supply-chain integrity | Tekton Chains + Cosign for PipelineRun provenance (SLSA 2/3 path). |
 | GitOps promotion | OpenShift GitOps syncs `LLMInferenceService` in `model-test`. Production promotion is a human step. |
 

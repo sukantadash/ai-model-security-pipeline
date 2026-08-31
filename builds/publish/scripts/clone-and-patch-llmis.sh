@@ -4,9 +4,10 @@ set -euo pipefail
 GIT_URL="${GIT_URL:?GIT_URL required}"
 GIT_PATH="${GIT_PATH:?GIT_PATH required (path inside the repo)}"
 OUT_DIR="${OUT_DIR:?OUT_DIR required}"
-NAME="${NAME:?NAME required}"
-MODEL_NAME="${MODEL_NAME:?MODEL_NAME required}"
+NAME="${NAME:-}"
+MODEL_NAME="${MODEL_NAME:-}"
 MODEL_URI="${MODEL_URI:?MODEL_URI required}"
+MODEL_VERSION="${MODEL_VERSION:-}"
 NAMESPACE="${NAMESPACE:-}"
 GIT_REVISION="${GIT_REVISION:-}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -37,7 +38,8 @@ fi
 
 python3 "${SCRIPT_DIR}/patch_llmis.py" "${SRC}" \
   --out-dir "${OUT_DIR}" \
-  --name "${NAME}" \
-  --model-name "${MODEL_NAME}" \
   --model-uri "${MODEL_URI}" \
+  ${NAME:+--name "${NAME}"} \
+  ${MODEL_NAME:+--model-name "${MODEL_NAME}"} \
+  ${MODEL_VERSION:+--model-version "${MODEL_VERSION}"} \
   ${NAMESPACE:+--namespace "${NAMESPACE}"}

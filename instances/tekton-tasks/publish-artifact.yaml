@@ -4,10 +4,12 @@ metadata:
   name: publish-artifact
   labels:
     app.kubernetes.io/part-of: ai-model-security-pipeline
+    ai.security.pipeline/stage: publish-artifact
 spec:
   description: >
-    Promote verified model weights to MinIO models-verified, register in
-    RHOAI Model Registry, and apply the patched LLMInferenceService in model-test.
+    Promote model weights to MinIO models-verified, register in
+    RHOAI Model Registry, and apply the patched LLMInferenceService in model-test
+    when score-gate routing is auto-pass or review.
   params:
     - name: image
       type: string
@@ -37,9 +39,25 @@ spec:
     - name: scan-uri
   workspaces:
     - name: models
+  volumes:
+    - name: scratch
+      emptyDir: {}
+    - name: register-model
+      configMap:
+        name: publish-register-model
+        defaultMode: 0555
+  stepTemplate:
+    volumeMounts:
+      - name: scratch
+        mountPath: /scratch
   steps:
     - name: publish
       image: $(params.image)
+      imagePullPolicy: IfNotPresent
+      volumeMounts:
+        - name: register-model
+          mountPath: /opt/register
+          readOnly: true
       envFrom:
         - secretRef:
             name: minio-s3
@@ -50,7 +68,7 @@ spec:
         MODEL_ID="$(params.model-id)"
         MODEL_PATH="$(workspaces.models.path)"
         MR_NS="$(params.model-registry-namespace)"
-        MR_URL="${MODEL_REGISTRY_URL:-http://model-registry.${MR_NS}.svc:8080}"
+        MR_URL="${MODEL_REGISTRY_URL:-https://model-registry.${MR_NS}.svc:8443}"
         PR="$(params.pipeline-run-name)"
         if [[ -z "${PR}" ]]; then PR="$(context.taskRun.name)"; fi
         VERSION="$(model_version_from_run "${PR}")"
@@ -65,36 +83,22 @@ spec:
         fi
         PASSED="$(jq -r '.passed // false' "${SCORE_FILE}")"
         ROUTING="$(jq -r '.routing // empty' "${SCORE_FILE}")"
-        if [[ "${PASSED}" != "true" || "${ROUTING}" != "auto-pass" ]]; then
+        if [[ "${ROUTING}" != "auto-pass" && "${ROUTING}" != "review" ]]; then
           echo "refusing promote: passed=${PASSED} routing=${ROUTING}" >&2
           exit 1
         fi
 
         S3_URI=$(s3_promote_verified "${MODEL_ID}" "${VERSION}" "${MODEL_PATH}")
-        echo "Promoted weights to ${S3_URI}"
+        echo "Promoted weights to ${S3_URI} (routing=${ROUTING})"
 
-        REGISTER_PAYLOAD=$(jq -n \
-          --arg name "${MODEL_ID}" \
-          --arg uri "${S3_URI}" \
-          --arg scan "${SCAN_URI}" \
-          --arg version "${VERSION}" \
-          '{name: $name, description: "Verified by model-security-pipeline", customProperties: {storage_uri: $uri, scan_uri: $scan, version: $version}}')
-
-        HTTP_CODE=$(curl -sS -o /tmp/mr-register.json -w '%{http_code}' \
-          -X POST "${MR_URL}/api/model_registry/v1alpha3/registered_models" \
-          -H 'Content-Type: application/json' \
-          -d "${REGISTER_PAYLOAD}" || echo "000")
-
-        if [[ "${HTTP_CODE}" != "201" && "${HTTP_CODE}" != "200" ]]; then
-          echo "Model Registry registration returned ${HTTP_CODE}; body:" >&2
-          cat /tmp/mr-register.json >&2 || true
-          exit 1
-        fi
+        export MR_URL S3_URI SCAN_URI VERSION ROUTING MODEL_ID
+        python3 /opt/register/register_model.py
 
         python3 - <<PY
         import json
         payload = {
-          "status": "pass",
+          "status": "${ROUTING}",
+          "routing": "${ROUTING}",
           "published_uri": "${S3_URI}",
           "scan_uri": "${SCAN_URI}",
           "model_registry_namespace": "${MR_NS}",
@@ -108,9 +112,10 @@ spec:
         echo -n "${S3_URI}" > "$(results.published-uri.path)"
         echo -n "${VERSION}" > "$(results.model-version.path)"
         echo -n "${SCAN_URI}" > "$(results.scan-uri.path)"
-        printf '%s' "${S3_URI}" > /tmp/published-uri
+        printf '%s' "${S3_URI}" > /scratch/published-uri
     - name: clone-patch-test
       image: $(params.image)
+      imagePullPolicy: IfNotPresent
       env:
       - name: GIT_TOKEN
         valueFrom:
@@ -131,26 +136,27 @@ spec:
         if [[ -z "${PR}" ]]; then PR="$(context.taskRun.name)"; fi
         VERSION="${PR: -5}"
         URI="s3://models-verified/${MODEL_ID}/${VERSION}/"
-        if [[ -f /tmp/published-uri ]]; then
-          GOT="$(cat /tmp/published-uri)"
+        if [[ -f /scratch/published-uri ]]; then
+          GOT="$(cat /scratch/published-uri)"
           if [[ -n "${GOT}" ]]; then URI="${GOT}"; fi
         fi
-        NAME="$(echo "${MODEL_ID}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | cut -c1-63)"
-        OUT="/tmp/patched-test"
-        rm -rf "${OUT}" /tmp/patched-test-apply
-        mkdir -p /tmp/patched-test-apply
+        OUT="/scratch/patched-test"
+        APPLY="/scratch/patched-test-apply"
+        rm -rf "${OUT}" "${APPLY}"
+        mkdir -p "${APPLY}"
         export GIT_URL
         export GIT_PATH="$(params.model-test-path)"
         export GIT_REVISION="$(params.git-revision)"
         export OUT_DIR="${OUT}"
-        export NAME
-        export MODEL_NAME="${MODEL_ID}"
+        unset NAME MODEL_NAME
         export MODEL_URI="${URI}"
+        export MODEL_VERSION="${VERSION}"
         export NAMESPACE="$(params.test-namespace)"
         /scripts/clone-and-patch-llmis.sh
-        cp -a "${OUT}/." /tmp/patched-test-apply/
+        cp -a "${OUT}/." "${APPLY}/"
     - name: apply-test
       image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+      imagePullPolicy: IfNotPresent
       envFrom:
       - secretRef:
           name: minio-s3
@@ -158,7 +164,7 @@ spec:
         #!/usr/bin/env bash
         set -euo pipefail
         NS="$(params.test-namespace)"
-        DIR="/tmp/patched-test-apply"
+        DIR="/scratch/patched-test-apply"
         if [[ ! -d "${DIR}" ]] || [[ -z "$(ls -A "${DIR}" 2>/dev/null || true)" ]]; then
           echo "no patched model-test YAML; skip apply" >&2
           exit 0

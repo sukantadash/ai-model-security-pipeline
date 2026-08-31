@@ -118,7 +118,7 @@ MinIO deploys via overlay `05-storage` (`instances/minio/`). Zone credentials: `
 5. static → dynamic-scan (isolated-runtime, behavior, abnormal-resources, basic-inference) → capability-eval (quality, performance-cost, stability-check, anomaly-bias-detection) → adversarial-test (prompt-injection, jailbreak-guardrail-bypass, harmful-content-bias) → score-gate
    Each subtask uploads JSON to s3://models-eval/<model-id>/<version>/scan-result/; merges and score-gate download that prefix.
 6. finally archive-results: write manifest.json into the same scan-result/ prefix
-7. publish-artifact (auto-pass only): weights to models-verified/<model-id>/<version>/ + register RHOAI Model Registry (scan_uri + version)
+7. publish-artifact (auto-pass or review): weights to models-verified/<model-id>/<version>/ + register RHOAI Model Registry (scan_uri + version + routing)
 8. GitOps updates LLMInferenceService in model-test (registry annotations + s3:// URI). Promotion to model-prod is manual.
 ```
 

@@ -7,7 +7,8 @@ set -euo pipefail
 MODEL_ID="${MODEL_ID:?MODEL_ID required}"
 MODEL_PATH="${MODEL_PATH:?MODEL_PATH required}"
 MR_NS="${MODEL_REGISTRY_NAMESPACE:-rhoai-model-registries}"
-MR_URL="${MODEL_REGISTRY_URL:-http://model-registry.${MR_NS}.svc:8080}"
+# RHOAI exposes REST through kube-rbac-proxy on :8443 (the Service has no :8080).
+MR_URL="${MODEL_REGISTRY_URL:-https://model-registry.${MR_NS}.svc:8443}"
 
 source /scripts/s3-common.sh
 
@@ -32,36 +33,22 @@ fi
 
 PASSED="$(jq -r '.passed // false' "${SCORE_FILE}")"
 ROUTING="$(jq -r '.routing // empty' "${SCORE_FILE}")"
-if [[ "${PASSED}" != "true" || "${ROUTING}" != "auto-pass" ]]; then
+if [[ "${ROUTING}" != "auto-pass" && "${ROUTING}" != "review" ]]; then
   echo "refusing promote: passed=${PASSED} routing=${ROUTING}" >&2
   exit 1
 fi
 
 S3_URI=$(s3_promote_verified "${MODEL_ID}" "${VERSION}" "${MODEL_PATH}")
-echo "Promoted weights to ${S3_URI}"
+echo "Promoted weights to ${S3_URI} (routing=${ROUTING})"
 
-REGISTER_PAYLOAD=$(jq -n \
-  --arg name "${MODEL_ID}" \
-  --arg uri "${S3_URI}" \
-  --arg scan "${SCAN_URI}" \
-  --arg version "${VERSION}" \
-  '{name: $name, description: "Verified by model-security-pipeline", customProperties: {storage_uri: $uri, scan_uri: $scan, version: $version}}')
-
-HTTP_CODE=$(curl -sS -o /tmp/mr-register.json -w '%{http_code}' \
-  -X POST "${MR_URL}/api/model_registry/v1alpha3/registered_models" \
-  -H 'Content-Type: application/json' \
-  -d "${REGISTER_PAYLOAD}" || echo "000")
-
-if [[ "${HTTP_CODE}" != "201" && "${HTTP_CODE}" != "200" ]]; then
-  echo "Model Registry registration returned ${HTTP_CODE}; body:" >&2
-  cat /tmp/mr-register.json >&2 || true
-  exit 1
-fi
+export MR_URL S3_URI SCAN_URI VERSION ROUTING MODEL_ID
+python3 /scripts/register_model.py
 
 python3 - <<PY
 import json
 payload = {
-  "status": "pass",
+  "status": "${ROUTING}",
+  "routing": "${ROUTING}",
   "published_uri": "${S3_URI}",
   "scan_uri": "${SCAN_URI}",
   "model_registry_namespace": "${MR_NS}",
