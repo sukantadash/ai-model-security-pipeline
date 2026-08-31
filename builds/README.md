@@ -13,7 +13,6 @@ Built in the **`build-image`** namespace (no zone NetworkPolicy). Tekton tasks i
 | `ai-security-model-fetch` | `builds/model-fetch/` | Download models from Hugging Face Hub |
 | `ai-security-static-scan` | `builds/static-scan/` | Static security scanning |
 | `ai-security-dynamic-test` | `builds/dynamic-test/` | Sandboxed runtime probe |
-| `ai-security-dynamic-gpu` | `builds/dynamic-gpu/` | GPU load probe |
 | `ai-security-capability-eval` | `builds/capability-eval/` | Benchmark evaluation |
 | `ai-security-adversarial-test` | `builds/adversarial-test/` | Adversarial testing (prompt injection, jailbreak, harmful content/bias) |
 | `ai-security-score-gate` | `builds/score-gate/` | Weighted `S_total`, routing auto-pass/review/reject |
@@ -25,7 +24,7 @@ Built in the **`build-image`** namespace (no zone NetworkPolicy). Tekton tasks i
 oc apply -k ./overlays/06-builds/
 oc apply -f quay-secret.yaml -n build-image
 oc secrets link builder sudash-modelpipeline-pull-secret -n build-image
-for bc in model-fetch static-scan dynamic-test dynamic-gpu capability-eval adversarial-test score-gate publish; do
+for bc in model-fetch static-scan dynamic-test capability-eval adversarial-test score-gate publish; do
   oc start-build "ai-security-${bc}" --from-dir="builds/${bc}" --follow -n build-image
 done
 ```

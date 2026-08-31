@@ -65,7 +65,7 @@ metadata:
     security.platform/model-version: PLACEHOLDER
 spec:
   model:
-    uri: s3://models-verified/redhatai-qwen3-8b-fp8-dynamic/PLACEHOLDER/
+    uri: model-registry://redhatai-qwen3-8b-fp8-dynamic/PLACEHOLDER
     name: RedHatAI/Qwen3-8B-FP8-dynamic
 """
             )
@@ -74,7 +74,7 @@ spec:
                 dest,
                 name=None,
                 model_name=None,
-                model_uri="s3://models-verified/redhatai-qwen3-8b-fp8-dynamic/9djp2/",
+                model_uri="model-registry://redhatai-qwen3-8b-fp8-dynamic/9djp2",
                 namespace="model-test",
                 model_version="9djp2",
             )
@@ -84,7 +84,7 @@ spec:
             self.assertEqual(doc["spec"]["model"]["name"], "RedHatAI/Qwen3-8B-FP8-dynamic")
             self.assertEqual(
                 doc["spec"]["model"]["uri"],
-                "s3://models-verified/redhatai-qwen3-8b-fp8-dynamic/9djp2/",
+                "model-registry://redhatai-qwen3-8b-fp8-dynamic/9djp2",
             )
             self.assertEqual(doc["metadata"]["namespace"], "model-test")
             self.assertEqual(doc["metadata"]["annotations"]["openshift.io/display-name"], "qwen3-8b-fp8-verified")

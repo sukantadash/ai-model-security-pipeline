@@ -135,11 +135,8 @@ spec:
         PR="$(params.pipeline-run-name)"
         if [[ -z "${PR}" ]]; then PR="$(context.taskRun.name)"; fi
         VERSION="${PR: -5}"
-        URI="s3://models-verified/${MODEL_ID}/${VERSION}/"
-        if [[ -f /scratch/published-uri ]]; then
-          GOT="$(cat /scratch/published-uri)"
-          if [[ -n "${GOT}" ]]; then URI="${GOT}"; fi
-        fi
+        # Serving URI references Model Registry; storage-initializer resolves to artifact s3:// URI.
+        URI="model-registry://${MODEL_ID}/${VERSION}"
         OUT="/scratch/patched-test"
         APPLY="/scratch/patched-test-apply"
         rm -rf "${OUT}" "${APPLY}"

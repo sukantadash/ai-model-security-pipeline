@@ -52,7 +52,7 @@ Finding schema: `issue`, `risk` (`critical|high|medium|low`), `tool` or `tool_us
 
 After `static-scan-merge`, `serve-llm-start` clones `git-url`, patches `metadata.name` / `spec.model.name` / `spec.model.uri` (`s3://models-ingress/<model-id>/`) under `model-sandbox-path`, and applies in **`model-sandbox`** (namespace already exists). It waits until Ready, writes `vllm-endpoint.json`, and exports `endpoint-url` and `service-name`. `finally: serve-llm-stop` deletes that CR only.
 
-On auto-pass, `publish-artifact` patches `model-test-path` to `s3://models-verified/<id>/<version>/` and applies in `model-test`.
+On auto-pass, `publish-artifact` patches `model-test-path` to `model-registry://<id>/<version>` and applies in `model-test`.
 
 | Tool | What the code does | Installed in the image? |
 |------|--------------------|-------------------------|

@@ -1,0 +1,34 @@
+# Resolves model-registry://registeredModel/modelVersion to the artifact URI in Model Registry
+# (typically s3://models-verified/...) via KServe storage-initializer injection.
+# Requires model-test pods to reach Model Registry REST (see networkpolicy + RoleBinding).
+apiVersion: serving.kserve.io/v1alpha1
+kind: ClusterStorageContainer
+metadata:
+  name: model-registry
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+    app.kubernetes.io/name: model-registry-storage-initializer
+spec:
+  workloadType: initContainer
+  supportedUriFormats:
+    - prefix: model-registry://
+  container:
+    name: storage-initializer
+    image: ghcr.io/kubeflow/model-registry/storage-initializer:v0.2.16
+    imagePullPolicy: IfNotPresent
+    env:
+      - name: MODEL_REGISTRY_BASE_URL
+        value: model-registry.rhoai-model-registries.svc:8443
+      - name: MODEL_REGISTRY_SCHEME
+        value: https
+      - name: MODEL_REGISTRY_SERVICE_NAME
+        value: model-registry
+      - name: ALLOWED_ARTIFACT_URI_PREFIXES
+        value: s3://
+    resources:
+      requests:
+        cpu: 100m
+        memory: 100Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi

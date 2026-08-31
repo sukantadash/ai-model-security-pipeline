@@ -41,7 +41,7 @@ Untrusted model artifacts enter the **Ingress Zone**, pass through a four-task T
 
 ### 3.1 Architecture Diagram
 
-![Architecture diagram](./architecture-diagram.svg)
+![Architecture diagram](./docs/diagrams/architecture-overview.svg)
 
 *Figure: Ingress, Evaluation, and Production zones with Tekton pipeline tasks, score gate, and signed artifact promotion.*
 
@@ -119,7 +119,7 @@ Fetch Artifact → Static Scanning → Dynamic Scan → Capability Eval → Adve
 | **Capability Evaluation** | Benchmark quality, performance/cost, stability, and anomaly/bias | HTTP to eval `LLMInferenceService` (lm-eval-harness later) | Four parallel Tasks + merge Task |
 | **Adversarial Test** | Adversarial probing and guardrails | HTTP probes (Garak / Promptfoo / LLM Guard later) | Three parallel Tasks + merge Task |
 
-Pipeline runs clone `git-url`, patch `LLMInferenceService.yaml` under `model-sandbox-path`, and apply it in **`model-sandbox`**. Later stages use `model-endpoint`. Isolation probes inspect that serving pod. `serve-llm-stop` deletes the sandbox CR (namespace stays). Auto-pass patches `model-test-path` to `s3://models-verified/` and applies in `model-test`.
+Pipeline runs clone `git-url`, patch `LLMInferenceService.yaml` under `model-sandbox-path`, and apply it in **`model-sandbox`**. Later stages use `model-endpoint`. Isolation probes inspect that serving pod. `serve-llm-stop` deletes the sandbox CR (namespace stays). Auto-pass and review patch `model-test-path` to `s3://models-verified/` and apply in `model-test`.
 
 What each scanner **does in code** (tool name, installed vs fixture, future work) is in **[docs/detailed-design.md](docs/detailed-design.md)**.
 

@@ -10,9 +10,10 @@ Apply the RHOAI inference platform before verified model serving (see `script.sh
 ## After publish-artifact
 
 1. Read `publish.json` from `s3://models-eval/<model-id>/<version>/scan-result/` or task logs.
-2. Update `llm-models/qwen3-8b-fp8-verified.yaml`:
+2. Update `llm-models/qwen3-8b-fp8-verified.yaml` (or let `publish-artifact` patch from git):
    - `security.platform/model-version` (last five characters of the PipelineRun name, e.g. `9x57m`)
-   - `spec.model.uri` → `s3://models-verified/redhatai-qwen3-8b-fp8-dynamic/<version>/`
+   - `spec.model.uri` → `model-registry://redhatai-qwen3-8b-fp8-dynamic/<version>`
+   Weights remain at `s3://models-verified/...`; the storage-initializer resolves them via Model Registry metadata.
    Scan reports for that version: `s3://models-eval/redhatai-qwen3-8b-fp8-dynamic/<version>/scan-result/`
 3. Apply overlay 16 or commit for GitOps (overlay 17) into **model-test**.
 

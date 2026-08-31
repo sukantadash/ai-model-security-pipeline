@@ -15,7 +15,8 @@ spec:
   grpc: {}
   rest:
     port: 8080
-  oauthProxy: {}
+  # RHOAI 3.5+ uses kube-rbac-proxy (not oauthProxy); REST is HTTPS :8443 in-cluster.
+  kubeRBACProxy: {}
   postgres:
     host: model-registry-db
     port: 5432

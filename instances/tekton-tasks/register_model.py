@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Register a verified model in RHOAI Model Registry (v1alpha3 REST).
 
+Canonical: builds/publish/scripts/register_model.py
+Task ConfigMap: instances/tekton-tasks/register_model.py
+Keep these two files identical (kustomize cannot read files outside tekton-tasks/).
+
 Talks to kube-rbac-proxy on :8443 with the TaskRun ServiceAccount token.
 Creates RegisteredModel + ModelVersion + ModelArtifact (idempotent on name).
 """

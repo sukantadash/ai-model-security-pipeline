@@ -5,6 +5,8 @@ generatorOptions:
   disableNameSuffixHash: true
 
 configMapGenerator:
+  # Duplicate of builds/publish/scripts/register_model.py (kustomize cannot
+  # load files outside this directory). Keep in sync via assert_copies_match.py.
   - name: publish-register-model
     files:
       - register_model.py

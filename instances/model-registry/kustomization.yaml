@@ -14,5 +14,7 @@ resources:
   - postgres-service.yaml
   - postgres-deployment.yaml
   - modelregistry.yaml
+  - cluster-storage-container.yaml
   - pipeline-registry-user-binding.yaml
+  - model-test-registry-user-binding.yaml
   - networkpolicy-from-eval.yaml

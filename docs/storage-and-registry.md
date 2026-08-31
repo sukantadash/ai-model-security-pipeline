@@ -66,6 +66,6 @@ On auto-pass or review, `publish-artifact`:
 2. Copies weights to `s3://models-verified/<model-id>/<version>/`.
 3. `POST /api/model_registry/v1alpha3/registered_models` with storage URI, scan URI, and routing.
 
-OpenShift GitOps then syncs `LLMInferenceService` in `model-test` (registry annotations + `s3://` URI). See [GitOps promotion](diagrams/gitops-promotion.svg).
+OpenShift GitOps then syncs `LLMInferenceService` in `model-test` with `spec.model.uri` set to `model-registry://<model-id>/<version>`. The Model Registry storage initializer resolves that to the registered artifact `s3://` URI. See [GitOps promotion](diagrams/gitops-promotion.svg).
 
 Cosign signing of the weight blob itself is documented; the publish Task does not invoke Cosign today (Chains covers PipelineRun provenance).

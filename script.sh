@@ -57,7 +57,7 @@ oc get installplan -A
 
 # =============================================================================
 # Phase 2: Zones — namespaces, NetworkPolicies, pipeline RBAC
-# Overlay: 04-zones (eval/sandbox/test + pipeline-rbac). Design table lists this
+# Overlay: 04-zones (eval/sandbox/test + build-image namespace + pipeline-rbac).
 # as Phase 3; apply before overlay 03 so namespaces exist before KataConfig reboots.
 # model-ingress: pass namespace on the oc command (kustomization has no namespace:).
 # model-sandbox persists (pipeline never creates/deletes the namespace).
@@ -66,7 +66,7 @@ oc apply -k ./instances/model-ingress/ -n "${NS_MODEL_INGRESS}"
 oc apply -k ./overlays/04-zones/
 #
 # Verify:
-oc get ns "${NS_MODEL_INGRESS}" "${NS_MODEL_EVAL}" "${NS_MODEL_SANDBOX}" "${NS_MODEL_TEST}"
+oc get ns "${NS_MODEL_INGRESS}" "${NS_MODEL_EVAL}" "${NS_MODEL_SANDBOX}" "${NS_MODEL_TEST}" "${NS_BUILD_IMAGE}"
 oc get sa model-eval-pipeline -n "${NS_MODEL_EVAL}"
 oc get networkpolicy -n "${NS_MODEL_EVAL}" | grep -E 'serve-llm|pipeline-oc' || true
 oc get networkpolicy,role,rolebinding -n "${NS_MODEL_SANDBOX}"
@@ -119,18 +119,17 @@ oc apply -f quay-secret.yaml -n "${NS_MODEL_EVAL}"
 oc apply -f quay-secret.yaml -n "${NS_MODEL_TEST}"
 #
 # Hugging Face token (ingress only, gated models) — replace <your-token>:
-# oc create secret generic hf-token -n "${NS_MODEL_INGRESS}" \
-#   --from-literal=HF_TOKEN=<your-token>
+oc create secret generic hf-token -n "${NS_MODEL_INGRESS}" \
+  --from-literal=HF_TOKEN=<your-token>
 
 # =============================================================================
 # Phase 5: Build custom scanner images
 # Overlay: 06-builds  Images: docs/pipeline.md "Scanner images"
 # =============================================================================
 oc apply -k ./overlays/06-builds/ -n "${NS_BUILD_IMAGE}"
-oc apply -f quay-secret.yaml -n "${NS_BUILD_IMAGE}"
-oc secrets link builder sudash-modelpipeline-pull-secret -n "${NS_BUILD_IMAGE}"
+# quay-secret + builder link: Phase 4 (build-image).
 
-for bc in model-fetch static-scan dynamic-test dynamic-gpu capability-eval adversarial-test score-gate publish; do
+for bc in model-fetch static-scan dynamic-test capability-eval adversarial-test score-gate publish; do
   oc start-build "ai-security-${bc}" --from-dir="builds/${bc}" --follow -n "${NS_BUILD_IMAGE}"
 done
 
@@ -140,8 +139,6 @@ oc get istag -n "${NS_BUILD_IMAGE}" | grep ai-security
 for ns in "${NS_MODEL_INGRESS}" "${NS_MODEL_EVAL}" "${NS_MODEL_SANDBOX}"; do
   oc policy add-role-to-group system:image-puller "system:serviceaccounts:${ns}" -n "${NS_BUILD_IMAGE}"
 done
-# After script changes under builds/, rebuild that image before the next PipelineRun:
-#   oc start-build ai-security-dynamic-test --from-dir=builds/dynamic-test --follow -n "${NS_BUILD_IMAGE}"
 
 # =============================================================================
 # Phase 6: Tekton Tasks
@@ -173,95 +170,11 @@ oc get eventlistener,route -n "${NS_MODEL_EVAL}"
 oc apply -k ./overlays/10-tekton-chains/
 
 # =============================================================================
-# Phase 10: Fetch + unit TaskRuns (fixtures; no live vLLM)
+# Phase 10: Fetch  (fixtures; no live vLLM)
 # Live PipelineRun (serve-llm + publish to Model Registry) is after Phase 11.
 # =============================================================================
-# Local (no cluster) — run these first after code changes:
-#   pip3 install pyyaml
-#   python3 builds/publish/scripts/test_patch_llmis.py
-#   python3 builds/dynamic-test/scripts/test_isolated_inspect.py
-#   bash builds/dynamic-test/scripts/run-unit-tests.sh
-#   bash builds/capability-eval/scripts/run-unit-tests.sh
-#   bash builds/adversarial-test/scripts/run-unit-tests.sh
-#
 oc apply -f ./instances/model-ingress-fetch/model-fetch-job.yaml -n "${NS_MODEL_INGRESS}"
 oc wait --for=condition=complete job/model-fetch -n "${NS_MODEL_INGRESS}" --timeout=7200s
-
-# Re-apply Tasks if you changed instances/tekton-tasks/ since Phase 6:
-oc apply -k ./overlays/07-tekton-tasks/ -n "${NS_MODEL_EVAL}"
-#
-# Unit-test static-scan TaskRuns (malware, vulnerabilities, license-compliance):
-oc create configmap fixture-static-malware -n "${NS_MODEL_EVAL}" \
-  --from-file=evil.pkl=./builds/static-scan/testdata/malware/evil.pkl \
-  --dry-run=client -o yaml | oc apply -f -
-oc create configmap fixture-static-vulnerabilities -n "${NS_MODEL_EVAL}" \
-  --from-file=requirements.txt=./builds/static-scan/testdata/vulnerabilities/requirements.txt \
-  --dry-run=client -o yaml | oc apply -f -
-oc create configmap fixture-static-license -n "${NS_MODEL_EVAL}" \
-  --from-file=config.json=./builds/static-scan/testdata/license-compliance/config.json \
-  --from-file=LICENSE=./builds/static-scan/testdata/license-compliance/LICENSE \
-  --dry-run=client -o yaml | oc apply -f -
-oc create -f ./instances/tekton-tasks/static-scan-unit-taskruns.yaml -n "${NS_MODEL_EVAL}"
-oc wait --for=condition=Succeeded taskrun -l test=static-scan-unit -n "${NS_MODEL_EVAL}" --timeout=600s
-oc get taskrun -l test=static-scan-unit -n "${NS_MODEL_EVAL}"
-#
-# Unit-test dynamic-scan TaskRuns (isolated-runtime, behavior, abnormal-resources, basic-inference):
-oc create configmap fixture-dynamic-isolated-runtime -n "${NS_MODEL_EVAL}" \
-  --from-file=README.txt=./builds/dynamic-test/testdata/isolated-runtime/README.txt \
-  --dry-run=client -o yaml | oc apply -f -
-oc create configmap fixture-dynamic-behavior -n "${NS_MODEL_EVAL}" \
-  --from-file=falco-alerts.json=./builds/dynamic-test/testdata/behavior/falco-alerts.json \
-  --dry-run=client -o yaml | oc apply -f -
-oc create configmap fixture-dynamic-abnormal-resources -n "${NS_MODEL_EVAL}" \
-  --from-file=kepler-samples.json=./builds/dynamic-test/testdata/abnormal-resources/kepler-samples.json \
-  --dry-run=client -o yaml | oc apply -f -
-oc create configmap fixture-dynamic-basic-inference -n "${NS_MODEL_EVAL}" \
-  --from-file=README.txt=./builds/dynamic-test/testdata/basic-inference/README.txt \
-  --dry-run=client -o yaml | oc apply -f -
-oc create -f ./instances/tekton-tasks/dynamic-scan-unit-taskruns.yaml -n "${NS_MODEL_EVAL}"
-oc wait --for=condition=Succeeded taskrun -l test=dynamic-scan-unit -n "${NS_MODEL_EVAL}" --timeout=600s
-oc get taskrun -l test=dynamic-scan-unit -n "${NS_MODEL_EVAL}"
-#
-# Unit-test capability-eval TaskRuns (quality, performance-cost, stability-check, anomaly-bias-detection):
-oc create configmap fixture-capability-quality -n "${NS_MODEL_EVAL}" \
-  --from-file=quality-scores.json=./builds/capability-eval/testdata/quality/quality-scores.json \
-  --dry-run=client -o yaml | oc apply -f -
-oc create configmap fixture-capability-performance-cost -n "${NS_MODEL_EVAL}" \
-  --from-file=perf-metrics.json=./builds/capability-eval/testdata/performance-cost/perf-metrics.json \
-  --dry-run=client -o yaml | oc apply -f -
-oc create configmap fixture-capability-stability -n "${NS_MODEL_EVAL}" \
-  --from-file=latency-samples.json=./builds/capability-eval/testdata/stability-check/latency-samples.json \
-  --dry-run=client -o yaml | oc apply -f -
-oc create configmap fixture-capability-anomaly-bias -n "${NS_MODEL_EVAL}" \
-  --from-file=baseline-delta.json=./builds/capability-eval/testdata/anomaly-bias/baseline-delta.json \
-  --dry-run=client -o yaml | oc apply -f -
-oc create -f ./instances/tekton-tasks/capability-eval-unit-taskruns.yaml -n "${NS_MODEL_EVAL}"
-oc wait --for=condition=Succeeded taskrun -l test=capability-eval-unit -n "${NS_MODEL_EVAL}" --timeout=600s
-oc get taskrun -l test=capability-eval-unit -n "${NS_MODEL_EVAL}"
-#
-# Unit-test adversarial-test TaskRuns (prompt-injection, jailbreak-guardrail-bypass, harmful-content-bias):
-oc create configmap fixture-adversarial-prompt-injection -n "${NS_MODEL_EVAL}" \
-  --from-file=injection-probes.json=./builds/adversarial-test/testdata/prompt-injection/injection-probes.json \
-  --dry-run=client -o yaml | oc apply -f -
-oc create configmap fixture-adversarial-jailbreak -n "${NS_MODEL_EVAL}" \
-  --from-file=jailbreak-probes.json=./builds/adversarial-test/testdata/jailbreak-guardrail-bypass/jailbreak-probes.json \
-  --dry-run=client -o yaml | oc apply -f -
-oc create configmap fixture-adversarial-harmful-content-bias -n "${NS_MODEL_EVAL}" \
-  --from-file=harmful-bias-probes.json=./builds/adversarial-test/testdata/harmful-content-bias/harmful-bias-probes.json \
-  --dry-run=client -o yaml | oc apply -f -
-oc create -f ./instances/tekton-tasks/adversarial-test-unit-taskruns.yaml -n "${NS_MODEL_EVAL}"
-oc wait --for=condition=Succeeded taskrun -l test=adversarial-test-unit -n "${NS_MODEL_EVAL}" --timeout=600s
-oc get taskrun -l test=adversarial-test-unit -n "${NS_MODEL_EVAL}"
-#
-# Merge + score-gate units (concat S3 JSON from the unit-test prefix, then score):
-oc create -f ./instances/tekton-tasks/merge-and-gate-unit-taskruns.yaml -n "${NS_MODEL_EVAL}"
-oc wait --for=condition=Succeeded taskrun -l test=static-scan-merge-unit -n "${NS_MODEL_EVAL}" --timeout=300s
-oc wait --for=condition=Succeeded taskrun -l test=dynamic-scan-merge-unit -n "${NS_MODEL_EVAL}" --timeout=300s
-oc wait --for=condition=Succeeded taskrun -l test=capability-eval-merge-unit -n "${NS_MODEL_EVAL}" --timeout=300s
-oc wait --for=condition=Succeeded taskrun -l test=adversarial-test-merge-unit -n "${NS_MODEL_EVAL}" --timeout=300s
-oc wait --for=condition=Succeeded taskrun -l test=score-gate-unit -n "${NS_MODEL_EVAL}" --timeout=300s
-# Unit JSON: s3://models-eval/unit-test/unit1/scan-result/
-# PipelineRun JSON: s3://models-eval/<model-id>/<version>/scan-result/
 
 # =============================================================================
 # Phase 11: RHOAI platform (DSC + dashboard + Model Registry)
@@ -276,8 +189,8 @@ oc wait --for=condition=Established crd/odhdashboardconfigs.opendatahub.io --tim
 oc wait --for=condition=Established crd/modelregistries.modelregistry.opendatahub.io --timeout=600s
 oc apply -k ./overlays/12-rhoai-dashboard/
 oc wait --for=condition=Available deployment/model-registry-db -n rhoai-model-registries --timeout=300s
-oc wait --for=condition=Available modelregistry/model-registry -n rhoai-model-registries --timeout=600s
-oc get modelregistry -n rhoai-model-registries
+oc wait --for=condition=Available mr/model-registry -n rhoai-model-registries --timeout=600s
+oc get mr -n rhoai-model-registries
 
 # Live pipeline (docs/pipeline.md DAG). Edit git-url in pipelinerun-example.yaml
 # to a reachable HTTPS repo; push instances/model-sandbox/LLMInferenceService.yaml.
@@ -294,8 +207,8 @@ oc get pipelinerun -n "${NS_MODEL_EVAL}" -w
 # After finally: CR deleted, namespace remains:
 #   oc get ns "${NS_MODEL_SANDBOX}"
 #   oc get llminferenceservice -n "${NS_MODEL_SANDBOX}"
-# Auto-pass: publish-artifact copies weights to models-verified, registers Model
-# Registry, and oc apply's the patched LLMInferenceService in model-test.
+# Auto-pass or review: publish-artifact copies weights to models-verified, registers
+# Model Registry, and oc apply's the patched LLMInferenceService in model-test.
 
 # =============================================================================
 # Phase 12: Inference gateway + TLS
@@ -307,8 +220,6 @@ oc get pipelinerun -n "${NS_MODEL_EVAL}" -w
 # Edit instances/gateway/gateway.yaml — replace REPLACE_WITH_CLUSTER_APPS_DOMAIN:
 #   hostname: inference-gateway.${APPS_DOMAIN}
 # Edit instances/gateway/tlspolicy.yaml issuerRef.name (oc get clusterissuer).
-# Optional GuideLLM — same domain in instances/guidellm-benchmark/guidellm-benchmark-job.yaml:
-#   GUIDELLM_TARGET=https://inference-gateway.${APPS_DOMAIN}/${NS_MODEL_TEST}/qwen3-8b-fp8
 oc apply -k ./overlays/13-gateway/
 oc get certificate -n openshift-ingress
 
