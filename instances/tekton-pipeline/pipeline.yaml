@@ -7,77 +7,41 @@ metadata:
 spec:
   description: Validate model artifacts from MinIO ingress through security tasks; promote to Model Registry on pass.
   params:
-  - name: model-id
-    type: string
-    description: Storage key under models-ingress/ (e.g. redhatai-qwen3-8b-fp8-dynamic)
-  - name: model-path
-    type: string
-    default: /workspace/models
-  - name: model-registry-namespace
-    type: string
-    default: rhoai-model-registries
+    - name: model-id
+      type: string
+      description: Storage key under models-ingress/ (e.g. redhatai-qwen3-8b-fp8-dynamic)
+    - name: model-path
+      type: string
+      default: /workspace/models
+    - name: model-registry-namespace
+      type: string
+      default: rhoai-model-registries
+    - name: git-url
+      type: string
+      default: https://github.com/sukantadash/ai-model-security-pipeline.git
+      description: Git repo that holds serving YAML (LLMInferenceService templates)
+    - name: model-sandbox-path
+      type: string
+      default: instances/model-sandbox
+      description: Path in git-url to sandbox manifests
+    - name: model-test-path
+      type: string
+      default: instances/model-test/llm-models
+      description: Path in git-url to verified serving manifests
+    - name: git-revision
+      type: string
+      default: ''
+    - name: sandbox-namespace
+      type: string
+      default: model-sandbox
+    - name: test-namespace
+      type: string
+      default: model-test
   workspaces:
   - name: shared-data
     description: eval-workspace PVC for model weights only (scan JSON is in MinIO models-eval)
   - name: results
     description: Pod-local emptyDir for scan JSON before S3 upload; not shared across TaskRuns
-  taskRunSpecs:
-  - pipelineTaskName: quality
-    podTemplate:
-      nodeSelector:
-        nvidia.com/gpu.present: 'true'
-      tolerations:
-      - key: nvidia.com/gpu
-        operator: Exists
-        effect: NoSchedule
-  - pipelineTaskName: performance-cost
-    podTemplate:
-      nodeSelector:
-        nvidia.com/gpu.present: 'true'
-      tolerations:
-      - key: nvidia.com/gpu
-        operator: Exists
-        effect: NoSchedule
-  - pipelineTaskName: stability-check
-    podTemplate:
-      nodeSelector:
-        nvidia.com/gpu.present: 'true'
-      tolerations:
-      - key: nvidia.com/gpu
-        operator: Exists
-        effect: NoSchedule
-  - pipelineTaskName: anomaly-bias-detection
-    podTemplate:
-      nodeSelector:
-        nvidia.com/gpu.present: 'true'
-      tolerations:
-      - key: nvidia.com/gpu
-        operator: Exists
-        effect: NoSchedule
-  - pipelineTaskName: prompt-injection
-    podTemplate:
-      nodeSelector:
-        nvidia.com/gpu.present: 'true'
-      tolerations:
-      - key: nvidia.com/gpu
-        operator: Exists
-        effect: NoSchedule
-  - pipelineTaskName: jailbreak-guardrail-bypass
-    podTemplate:
-      nodeSelector:
-        nvidia.com/gpu.present: 'true'
-      tolerations:
-      - key: nvidia.com/gpu
-        operator: Exists
-        effect: NoSchedule
-  - pipelineTaskName: harmful-content-bias
-    podTemplate:
-      nodeSelector:
-        nvidia.com/gpu.present: 'true'
-      tolerations:
-      - key: nvidia.com/gpu
-        operator: Exists
-        effect: NoSchedule
   tasks:
   - name: fetch-artifact
     taskRef:
@@ -154,9 +118,28 @@ spec:
     params:
     - *id001
     - *id002
-  - name: isolated-runtime
+  - name: serve-llm-start
     runAfter:
     - static-scan
+    taskRef:
+      name: serve-llm-start
+    workspaces:
+    - name: results
+      workspace: results
+    params:
+    - *id001
+    - *id002
+    - name: git-url
+      value: $(params.git-url)
+    - name: model-sandbox-path
+      value: $(params.model-sandbox-path)
+    - name: git-revision
+      value: $(params.git-revision)
+    - name: namespace
+      value: $(params.sandbox-namespace)
+  - name: isolated-runtime
+    runAfter:
+    - serve-llm-start
     taskRef:
       name: dynamic-scan-isolated-runtime
     workspaces:
@@ -168,9 +151,13 @@ spec:
     params:
     - *id001
     - *id002
+    - name: sandbox-namespace
+      value: $(params.sandbox-namespace)
+    - name: service-name
+      value: $(tasks.serve-llm-start.results.service-name)
   - name: behavior
     runAfter:
-    - static-scan
+    - serve-llm-start
     taskRef:
       name: dynamic-scan-behavior
     workspaces:
@@ -182,9 +169,13 @@ spec:
     params:
     - *id001
     - *id002
+    - name: sandbox-namespace
+      value: $(params.sandbox-namespace)
+    - name: service-name
+      value: $(tasks.serve-llm-start.results.service-name)
   - name: abnormal-resources
     runAfter:
-    - static-scan
+    - serve-llm-start
     taskRef:
       name: dynamic-scan-abnormal-resources
     workspaces:
@@ -196,9 +187,13 @@ spec:
     params:
     - *id001
     - *id002
+    - name: sandbox-namespace
+      value: $(params.sandbox-namespace)
+    - name: service-name
+      value: $(tasks.serve-llm-start.results.service-name)
   - name: basic-inference
     runAfter:
-    - static-scan
+    - serve-llm-start
     taskRef:
       name: dynamic-scan-basic-inference
     params:
@@ -206,6 +201,9 @@ spec:
       value: $(params.model-path)
     - *id001
     - *id002
+    - &id003
+      name: model-endpoint
+      value: $(tasks.serve-llm-start.results.endpoint-url)
     workspaces:
     - name: models
       workspace: shared-data
@@ -240,6 +238,7 @@ spec:
     params:
     - *id001
     - *id002
+    - *id003
   - name: performance-cost
     runAfter:
     - dynamic-scan
@@ -254,6 +253,7 @@ spec:
     params:
     - *id001
     - *id002
+    - *id003
   - name: stability-check
     runAfter:
     - dynamic-scan
@@ -268,6 +268,7 @@ spec:
     params:
     - *id001
     - *id002
+    - *id003
   - name: anomaly-bias-detection
     runAfter:
     - dynamic-scan
@@ -282,6 +283,7 @@ spec:
     params:
     - *id001
     - *id002
+    - *id003
   - name: capability-eval
     runAfter:
     - quality
@@ -310,6 +312,7 @@ spec:
     params:
     - *id001
     - *id002
+    - *id003
   - name: jailbreak-guardrail-bypass
     runAfter:
     - capability-eval
@@ -324,6 +327,7 @@ spec:
     params:
     - *id001
     - *id002
+    - *id003
   - name: harmful-content-bias
     runAfter:
     - capability-eval
@@ -338,6 +342,7 @@ spec:
     params:
     - *id001
     - *id002
+    - *id003
   - name: adversarial-test
     runAfter:
     - prompt-injection
@@ -379,11 +384,27 @@ spec:
       value: $(params.model-registry-namespace)
     - name: pipeline-run-name
       value: $(context.pipelineRun.name)
+    - name: git-url
+      value: $(params.git-url)
+    - name: model-test-path
+      value: $(params.model-test-path)
+    - name: git-revision
+      value: $(params.git-revision)
+    - name: test-namespace
+      value: $(params.test-namespace)
     workspaces:
     - name: models
       workspace: shared-data
       subPath: models
   finally:
+  - name: serve-llm-stop
+    taskRef:
+      name: serve-llm-stop
+    params:
+    - name: pipeline-run-name
+      value: $(context.pipelineRun.name)
+    - name: namespace
+      value: $(params.sandbox-namespace)
   - name: archive-results
     taskRef:
       name: archive-results

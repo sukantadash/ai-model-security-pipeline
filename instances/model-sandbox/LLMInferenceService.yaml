@@ -1,0 +1,52 @@
+# Template. serve-llm-start clones git, patches metadata.name / spec.model.name /
+# spec.model.uri, then oc apply -n model-sandbox. Do not apply PLACEHOLDER via overlay.
+apiVersion: serving.kserve.io/v1alpha1
+kind: LLMInferenceService
+metadata:
+  name: PLACEHOLDER
+  namespace: model-sandbox
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+    ai.security.pipeline/eval-serving: "true"
+    security.platform/zone: sandbox
+  annotations:
+    opendatahub.io/hardware-profile-name: gpu-profile
+    opendatahub.io/hardware-profile-namespace: redhat-ods-applications
+    opendatahub.io/model-type: generative
+    openshift.io/display-name: PLACEHOLDER
+    security.opendatahub.io/enable-auth: "false"
+    serving.kserve.io/storageSecretName: minio-s3
+    security.platform/source-pipeline: model-security-pipeline
+spec:
+  replicas: 1
+  model:
+    uri: s3://models-ingress/PLACEHOLDER/
+    name: PLACEHOLDER
+  template:
+    tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+    containers:
+      - name: main
+        env:
+          - name: VLLM_ADDITIONAL_ARGS
+            value: --disable-uvicorn-access-log
+        resources:
+          limits:
+            cpu: "4"
+            memory: 32Gi
+            nvidia.com/gpu: "1"
+          requests:
+            cpu: "2"
+            memory: 16Gi
+            nvidia.com/gpu: "1"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+            scheme: HTTPS
+          initialDelaySeconds: 180
+          periodSeconds: 30
+          timeoutSeconds: 30
+          failureThreshold: 5

@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 660" role="img" aria-label="Tekton pipeline DAG for model-security-pipeline">
+<rect x="0" y="0" width="1600" height="660" rx="0" fill="#F8F8F8" stroke="#F8F8F8" stroke-width="0"/>
+<defs><marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="#6A6E73"/></marker></defs>
+<text x="32" y="38" fill="#151515" font-size="18" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">model-security-pipeline  |  OpenShift Pipelines DAG</text>
+<text x="32" y="60" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">instances/tekton-pipeline/pipeline.yaml   |   parallel subtasks, then merge   |   publish when passed=true</text>
+<text x="40" y="88" fill="#0066CC" font-size="13" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Fetch</text>
+<text x="210" y="88" fill="#0066CC" font-size="13" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">1. Static</text>
+<text x="450" y="88" fill="#C9190B" font-size="13" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">2. Dynamic (hard gate)</text>
+<text x="740" y="88" fill="#0066CC" font-size="13" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">3. Capability (GPU)</text>
+<text x="1040" y="88" fill="#0066CC" font-size="13" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">4. Adversarial (GPU)</text>
+<text x="1340" y="88" fill="#3E8635" font-size="13" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Gate</text>
+<rect x="32" y="250" width="156" height="64" rx="6" fill="#E7F1FA" stroke="#0066CC" stroke-width="1"/>
+<text x="42" y="272" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">fetch-artifact</text>
+<text x="42" y="290" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">MinIO -&gt; PVC</text>
+<rect x="208" y="120" width="210" height="58" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="218" y="142" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">malware</text>
+<text x="218" y="160" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">ModelAudit, Fickling, ClamAV</text>
+<rect x="208" y="190" width="210" height="58" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="218" y="212" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">vulnerabilities</text>
+<text x="218" y="230" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Syft + Grype</text>
+<rect x="208" y="260" width="210" height="58" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="218" y="282" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">license-compliance</text>
+<text x="218" y="300" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">allow / copyleft / deny</text>
+<rect x="208" y="430" width="210" height="58" rx="6" fill="#E7F1FA" stroke="#0066CC" stroke-width="1"/>
+<text x="218" y="452" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">static-scan</text>
+<text x="218" y="470" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">static-scan.json</text>
+<rect x="448" y="110" width="250" height="56" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="458" y="132" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">isolated-runtime</text>
+<text x="458" y="150" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Kata DMI + NetworkPolicy</text>
+<rect x="448" y="176" width="250" height="56" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="458" y="198" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">behavior</text>
+<text x="458" y="216" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Falco alerts JSON</text>
+<rect x="448" y="242" width="250" height="56" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="458" y="264" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">abnormal-resources</text>
+<text x="458" y="282" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Kepler samples JSON</text>
+<rect x="448" y="308" width="250" height="56" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="458" y="330" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">basic-inference</text>
+<text x="458" y="348" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">weights / vLLM ping</text>
+<rect x="448" y="430" width="250" height="58" rx="6" fill="#FFF5F5" stroke="#C9190B" stroke-width="1"/>
+<text x="458" y="452" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">dynamic-scan</text>
+<text x="458" y="470" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">dynamic-scan.json</text>
+<rect x="738" y="110" width="260" height="56" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="748" y="132" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">quality</text>
+<text x="748" y="150" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">MMLU / GSM8K / HumanEval</text>
+<rect x="738" y="176" width="260" height="56" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="748" y="198" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">performance-cost</text>
+<text x="748" y="216" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">p99, tokens/sec, USD</text>
+<rect x="738" y="242" width="260" height="56" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="748" y="264" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">stability-check</text>
+<text x="748" y="282" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">p99/p50, jitter, timeouts</text>
+<rect x="738" y="308" width="260" height="56" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="748" y="330" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">anomaly-bias-detection</text>
+<text x="748" y="348" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">regression / bias / anomaly</text>
+<rect x="738" y="430" width="260" height="58" rx="6" fill="#E7F1FA" stroke="#0066CC" stroke-width="1"/>
+<text x="748" y="452" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">capability-eval</text>
+<text x="748" y="470" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">capability.json</text>
+<rect x="1038" y="140" width="270" height="58" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="1048" y="162" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">prompt-injection</text>
+<text x="1048" y="180" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">attack success rate</text>
+<rect x="1038" y="214" width="270" height="58" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="1048" y="236" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">jailbreak-guardrail-bypass</text>
+<text x="1048" y="254" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">bypass rate</text>
+<rect x="1038" y="288" width="270" height="58" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="1048" y="310" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">harmful-content-bias</text>
+<text x="1048" y="328" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">harmful rate / illegal</text>
+<rect x="1038" y="430" width="270" height="58" rx="6" fill="#E7F1FA" stroke="#0066CC" stroke-width="1"/>
+<text x="1048" y="452" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">adversarial-test</text>
+<text x="1048" y="470" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">adversarial-test.json</text>
+<rect x="1348" y="180" width="220" height="64" rx="6" fill="#E7F1FA" stroke="#0066CC" stroke-width="1"/>
+<text x="1358" y="202" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">score-gate</text>
+<text x="1358" y="220" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">S_total + routing</text>
+<rect x="1348" y="270" width="220" height="64" rx="6" fill="#E9F7E6" stroke="#3E8635" stroke-width="1"/>
+<text x="1358" y="292" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">publish-artifact</text>
+<text x="1358" y="310" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">when passed=true</text>
+<rect x="1348" y="430" width="220" height="64" rx="6" fill="#FFF4D4" stroke="#F0AB00" stroke-width="1"/>
+<text x="1358" y="452" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">archive-results</text>
+<text x="1358" y="470" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">finally (always)</text>
+<line x1="188" y1="282" x2="208" y2="149" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="188" y1="282" x2="208" y2="219" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="188" y1="282" x2="208" y2="289" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="313" y1="178" x2="313" y2="430" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="313" y1="248" x2="313" y2="430" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="313" y1="318" x2="313" y2="430" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="418" y1="459" x2="448" y2="459" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="698" y1="459" x2="738" y2="459" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="998" y1="459" x2="1038" y2="459" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="1308" y1="459" x2="1348" y2="212" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="1458" y1="244" x2="1458" y2="270" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
+<text x="32" y="530" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Each column: siblings runAfter the previous merge. Merge tasks always succeed (concat JSON to MinIO scan-result/).</text>
+<text x="32" y="552" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">score-gate fails the PipelineRun only when routing=reject. archive-results is pipeline finally and always writes manifest.json.</text>
+<text x="32" y="574" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Workspaces: shared-data = eval-workspace PVC (weights). results = emptyDir per TaskRun, then mc cp to s3://models-eval/&lt;id&gt;/&lt;ver&gt;/scan-result/.</text>
+<rect x="32" y="600" width="16" height="16" rx="3" fill="#E7F1FA" stroke="#0066CC" stroke-width="1"/>
+<text x="54" y="613" fill="#151515" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Scored / merge</text>
+<rect x="180" y="600" width="16" height="16" rx="3" fill="#FFF5F5" stroke="#C9190B" stroke-width="1"/>
+<text x="202" y="613" fill="#151515" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Hard gate (not in S_total)</text>
+<rect x="420" y="600" width="16" height="16" rx="3" fill="#E9F7E6" stroke="#3E8635" stroke-width="1"/>
+<text x="442" y="613" fill="#151515" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Conditional publish</text>
+<rect x="620" y="600" width="16" height="16" rx="3" fill="#FFF4D4" stroke="#F0AB00" stroke-width="1"/>
+<text x="642" y="613" fill="#151515" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">finally</text>
+</svg>

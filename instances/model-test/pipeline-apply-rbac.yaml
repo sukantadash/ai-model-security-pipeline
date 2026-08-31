@@ -1,0 +1,29 @@
+# Eval pipeline SA applies verified LLMInferenceService into this namespace on auto-pass.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: model-eval-pipeline-test-apply
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+rules:
+  - apiGroups: ["serving.kserve.io"]
+    resources: ["llminferenceservices"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: model-eval-pipeline-test-apply
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: model-eval-pipeline-test-apply
+subjects:
+  - kind: ServiceAccount
+    name: model-eval-pipeline
+    namespace: model-eval

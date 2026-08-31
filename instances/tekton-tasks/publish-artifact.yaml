@@ -6,9 +6,8 @@ metadata:
     app.kubernetes.io/part-of: ai-model-security-pipeline
 spec:
   description: >
-    Promote verified model weights to MinIO models-verified and register in
-    RHOAI Model Registry. Version is the last five characters of the PipelineRun
-    name. Scan JSON is already at models-eval/.../scan-result/.
+    Promote verified model weights to MinIO models-verified, register in
+    RHOAI Model Registry, and apply the patched LLMInferenceService in model-test.
   params:
     - name: image
       type: string
@@ -20,6 +19,18 @@ spec:
       default: rhoai-model-registries
     - name: pipeline-run-name
       type: string
+    - name: git-url
+      type: string
+      default: ''
+    - name: model-test-path
+      type: string
+      default: instances/model-test/llm-models
+    - name: git-revision
+      type: string
+      default: ''
+    - name: test-namespace
+      type: string
+      default: model-test
   results:
     - name: published-uri
     - name: model-version
@@ -97,3 +108,84 @@ spec:
         echo -n "${S3_URI}" > "$(results.published-uri.path)"
         echo -n "${VERSION}" > "$(results.model-version.path)"
         echo -n "${SCAN_URI}" > "$(results.scan-uri.path)"
+        printf '%s' "${S3_URI}" > /tmp/published-uri
+    - name: clone-patch-test
+      image: $(params.image)
+      env:
+      - name: GIT_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: git-auth
+            key: token
+            optional: true
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        GIT_URL="$(params.git-url)"
+        if [[ -z "${GIT_URL}" ]]; then
+          echo "git-url empty; skipping model-test LLMInferenceService apply" >&2
+          exit 0
+        fi
+        MODEL_ID="$(params.model-id)"
+        PR="$(params.pipeline-run-name)"
+        if [[ -z "${PR}" ]]; then PR="$(context.taskRun.name)"; fi
+        VERSION="${PR: -5}"
+        URI="s3://models-verified/${MODEL_ID}/${VERSION}/"
+        if [[ -f /tmp/published-uri ]]; then
+          GOT="$(cat /tmp/published-uri)"
+          if [[ -n "${GOT}" ]]; then URI="${GOT}"; fi
+        fi
+        NAME="$(echo "${MODEL_ID}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | cut -c1-63)"
+        OUT="/tmp/patched-test"
+        rm -rf "${OUT}" /tmp/patched-test-apply
+        mkdir -p /tmp/patched-test-apply
+        export GIT_URL
+        export GIT_PATH="$(params.model-test-path)"
+        export GIT_REVISION="$(params.git-revision)"
+        export OUT_DIR="${OUT}"
+        export NAME
+        export MODEL_NAME="${MODEL_ID}"
+        export MODEL_URI="${URI}"
+        export NAMESPACE="$(params.test-namespace)"
+        /scripts/clone-and-patch-llmis.sh
+        cp -a "${OUT}/." /tmp/patched-test-apply/
+    - name: apply-test
+      image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+      envFrom:
+      - secretRef:
+          name: minio-s3
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        NS="$(params.test-namespace)"
+        DIR="/tmp/patched-test-apply"
+        if [[ ! -d "${DIR}" ]] || [[ -z "$(ls -A "${DIR}" 2>/dev/null || true)" ]]; then
+          echo "no patched model-test YAML; skip apply" >&2
+          exit 0
+        fi
+        ENDPOINT="${AWS_ENDPOINT_URL:-${MINIO_ENDPOINT:-http://minio.minio-system.svc:9000}}"
+        HTTPS=0
+        case "${ENDPOINT}" in https://*) HTTPS=1 ;; esac
+        HOSTPORT="${ENDPOINT#http://}"
+        HOSTPORT="${HOSTPORT#https://}"
+        HOSTPORT="${HOSTPORT%/}"
+        oc create secret generic minio-s3 -n "${NS}" \
+          --from-literal=MINIO_ENDPOINT="${MINIO_ENDPOINT:-${ENDPOINT}}" \
+          --from-literal=AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
+          --from-literal=AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
+          --from-literal=AWS_REGION="${AWS_REGION:-us-east-1}" \
+          --from-literal=AWS_ENDPOINT_URL="${ENDPOINT}" \
+          --from-literal=AWS_DEFAULT_REGION="${AWS_REGION:-us-east-1}" \
+          --from-literal=S3_USE_HTTPS="${HTTPS}" \
+          --from-literal=S3_VERIFY_SSL="0" \
+          --from-literal=AWS_S3_FORCE_PATH_STYLE="true" \
+          --dry-run=client -o yaml | oc apply -f -
+        oc annotate secret minio-s3 -n "${NS}" --overwrite \
+          "serving.kserve.io/s3-endpoint=${HOSTPORT}" \
+          "serving.kserve.io/s3-usehttps=${HTTPS}" \
+          "serving.kserve.io/s3-region=${AWS_REGION:-us-east-1}" \
+          "serving.kserve.io/s3-verifyssl=0" \
+          "serving.kserve.io/s3-useanoncredential=false" \
+          "serving.kserve.io/s3-usevirtualbucket=false" || true
+        oc apply -n "${NS}" -f "${DIR}"
+        echo "applied LLMInferenceService in ${NS}"

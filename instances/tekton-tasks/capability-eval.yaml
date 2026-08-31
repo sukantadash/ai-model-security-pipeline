@@ -20,6 +20,9 @@ spec:
   - name: pipeline-run-name
     type: string
     default: ''
+  - name: model-endpoint
+    type: string
+    default: ''
   results:
   - name: result-file
     description: Path to quality findings JSON
@@ -29,17 +32,18 @@ spec:
   steps:
   - name: evaluate
     image: $(params.image)
+    env:
+    - name: MODEL_ENDPOINT
+      value: $(params.model-endpoint)
+    - name: MODEL_NAME
+      value: $(params.model-id)
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
       trap 'echo $? > "$(workspaces.results.path)/.step-rc"' EXIT
       OUT="$(workspaces.results.path)/capability-quality.json"
       SCORES="$(workspaces.models.path)/$(params.scores-file)"
-      if [[ -f "${SCORES}" ]]; then
-        /scripts/run-quality.sh "${OUT}" "${SCORES}"
-      else
-        echo '[]' > "${OUT}"
-      fi
+      /scripts/run-quality.sh "${OUT}" "${SCORES}"
       echo -n "${OUT}" > "$(results.result-file.path)"
     onError: continue
   - name: upload
@@ -87,6 +91,9 @@ spec:
   - name: pipeline-run-name
     type: string
     default: ''
+  - name: model-endpoint
+    type: string
+    default: ''
   results:
   - name: result-file
     description: Path to performance-cost findings JSON
@@ -96,17 +103,18 @@ spec:
   steps:
   - name: evaluate
     image: $(params.image)
+    env:
+    - name: MODEL_ENDPOINT
+      value: $(params.model-endpoint)
+    - name: MODEL_NAME
+      value: $(params.model-id)
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
       trap 'echo $? > "$(workspaces.results.path)/.step-rc"' EXIT
       OUT="$(workspaces.results.path)/capability-performance-cost.json"
       METRICS="$(workspaces.models.path)/$(params.metrics-file)"
-      if [[ -f "${METRICS}" ]]; then
-        /scripts/run-performance-cost.sh "${OUT}" "${METRICS}"
-      else
-        echo '[]' > "${OUT}"
-      fi
+      /scripts/run-performance-cost.sh "${OUT}" "${METRICS}"
       echo -n "${OUT}" > "$(results.result-file.path)"
     onError: continue
   - name: upload
@@ -154,6 +162,9 @@ spec:
   - name: pipeline-run-name
     type: string
     default: ''
+  - name: model-endpoint
+    type: string
+    default: ''
   results:
   - name: result-file
     description: Path to stability-check findings JSON
@@ -163,17 +174,18 @@ spec:
   steps:
   - name: evaluate
     image: $(params.image)
+    env:
+    - name: MODEL_ENDPOINT
+      value: $(params.model-endpoint)
+    - name: MODEL_NAME
+      value: $(params.model-id)
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
       trap 'echo $? > "$(workspaces.results.path)/.step-rc"' EXIT
       OUT="$(workspaces.results.path)/capability-stability.json"
       SAMPLES="$(workspaces.models.path)/$(params.samples-file)"
-      if [[ -f "${SAMPLES}" ]]; then
-        /scripts/run-stability-check.sh "${OUT}" "${SAMPLES}"
-      else
-        echo '[]' > "${OUT}"
-      fi
+      /scripts/run-stability-check.sh "${OUT}" "${SAMPLES}"
       echo -n "${OUT}" > "$(results.result-file.path)"
     onError: continue
   - name: upload
@@ -221,6 +233,9 @@ spec:
   - name: pipeline-run-name
     type: string
     default: ''
+  - name: model-endpoint
+    type: string
+    default: ''
   results:
   - name: result-file
     description: Path to anomaly-bias findings JSON
@@ -230,17 +245,18 @@ spec:
   steps:
   - name: evaluate
     image: $(params.image)
+    env:
+    - name: MODEL_ENDPOINT
+      value: $(params.model-endpoint)
+    - name: MODEL_NAME
+      value: $(params.model-id)
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
       trap 'echo $? > "$(workspaces.results.path)/.step-rc"' EXIT
       OUT="$(workspaces.results.path)/capability-anomaly-bias.json"
       DELTA="$(workspaces.models.path)/$(params.delta-file)"
-      if [[ -f "${DELTA}" ]]; then
-        /scripts/run-anomaly-bias.sh "${OUT}" "${DELTA}"
-      else
-        echo '[]' > "${OUT}"
-      fi
+      /scripts/run-anomaly-bias.sh "${OUT}" "${DELTA}"
       echo -n "${OUT}" > "$(results.result-file.path)"
     onError: continue
   - name: upload
@@ -283,6 +299,9 @@ spec:
     type: string
     default: unit-test
   - name: pipeline-run-name
+    type: string
+    default: ''
+  - name: model-endpoint
     type: string
     default: ''
   results:

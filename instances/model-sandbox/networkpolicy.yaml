@@ -1,0 +1,58 @@
+# Untrusted vLLM during eval. DNS + MinIO only — no public HTTPS.
+# Image pull is node-level; do not open 0.0.0.0/0:443 (isolated-runtime treats that as critical).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-cross-namespace
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+    security.platform/zone: sandbox
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector: {}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              security.platform/zone: evaluation
+  egress:
+    - to:
+        - podSelector: {}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: openshift-dns
+          podSelector:
+            matchLabels:
+              dns.operator.openshift.io/daemonset-dns: default
+      ports:
+        - protocol: UDP
+          port: dns
+        - protocol: TCP
+          port: dns-tcp
+    - to:
+        - ipBlock:
+            cidr: 172.30.0.0/16
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: minio-system
+      ports:
+        - protocol: TCP
+          port: 9000
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: openshift-image-registry
+      ports:
+        - protocol: TCP
+          port: 443

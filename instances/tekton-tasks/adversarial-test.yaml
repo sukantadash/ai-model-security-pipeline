@@ -20,6 +20,9 @@ spec:
   - name: pipeline-run-name
     type: string
     default: ''
+  - name: model-endpoint
+    type: string
+    default: ''
   results:
   - name: result-file
     description: Path to prompt-injection findings JSON
@@ -29,17 +32,18 @@ spec:
   steps:
   - name: probe
     image: $(params.image)
+    env:
+    - name: MODEL_ENDPOINT
+      value: $(params.model-endpoint)
+    - name: MODEL_NAME
+      value: $(params.model-id)
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
       trap 'echo $? > "$(workspaces.results.path)/.step-rc"' EXIT
       OUT="$(workspaces.results.path)/adversarial-prompt-injection.json"
       PROBES="$(workspaces.models.path)/$(params.probes-file)"
-      if [[ -f "${PROBES}" ]]; then
-        /scripts/run-prompt-injection.sh "${OUT}" "${PROBES}"
-      else
-        echo '[]' > "${OUT}"
-      fi
+      /scripts/run-prompt-injection.sh "${OUT}" "${PROBES}"
       echo -n "${OUT}" > "$(results.result-file.path)"
     onError: continue
   - name: upload
@@ -87,6 +91,9 @@ spec:
   - name: pipeline-run-name
     type: string
     default: ''
+  - name: model-endpoint
+    type: string
+    default: ''
   results:
   - name: result-file
     description: Path to jailbreak-guardrail-bypass findings JSON
@@ -96,17 +103,18 @@ spec:
   steps:
   - name: probe
     image: $(params.image)
+    env:
+    - name: MODEL_ENDPOINT
+      value: $(params.model-endpoint)
+    - name: MODEL_NAME
+      value: $(params.model-id)
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
       trap 'echo $? > "$(workspaces.results.path)/.step-rc"' EXIT
       OUT="$(workspaces.results.path)/adversarial-jailbreak-guardrail-bypass.json"
       PROBES="$(workspaces.models.path)/$(params.probes-file)"
-      if [[ -f "${PROBES}" ]]; then
-        /scripts/run-jailbreak-guardrail-bypass.sh "${OUT}" "${PROBES}"
-      else
-        echo '[]' > "${OUT}"
-      fi
+      /scripts/run-jailbreak-guardrail-bypass.sh "${OUT}" "${PROBES}"
       echo -n "${OUT}" > "$(results.result-file.path)"
     onError: continue
   - name: upload
@@ -154,6 +162,9 @@ spec:
   - name: pipeline-run-name
     type: string
     default: ''
+  - name: model-endpoint
+    type: string
+    default: ''
   results:
   - name: result-file
     description: Path to harmful-content-bias findings JSON
@@ -163,17 +174,18 @@ spec:
   steps:
   - name: probe
     image: $(params.image)
+    env:
+    - name: MODEL_ENDPOINT
+      value: $(params.model-endpoint)
+    - name: MODEL_NAME
+      value: $(params.model-id)
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
       trap 'echo $? > "$(workspaces.results.path)/.step-rc"' EXIT
       OUT="$(workspaces.results.path)/adversarial-harmful-content-bias.json"
       PROBES="$(workspaces.models.path)/$(params.probes-file)"
-      if [[ -f "${PROBES}" ]]; then
-        /scripts/run-harmful-content-bias.sh "${OUT}" "${PROBES}"
-      else
-        echo '[]' > "${OUT}"
-      fi
+      /scripts/run-harmful-content-bias.sh "${OUT}" "${PROBES}"
       echo -n "${OUT}" > "$(results.result-file.path)"
     onError: continue
   - name: upload
@@ -217,6 +229,9 @@ spec:
     type: string
     default: unit-test
   - name: pipeline-run-name
+    type: string
+    default: ''
+  - name: model-endpoint
     type: string
     default: ''
   results:

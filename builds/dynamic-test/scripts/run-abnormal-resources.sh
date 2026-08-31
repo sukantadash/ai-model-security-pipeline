@@ -1,23 +1,20 @@
 #!/usr/bin/env bash
-# Subtask abnormal-resources: Kepler/Prometheus CPU/GPU/memory vs ceilings.
+# Subtask abnormal-resources: Kepler fixture, or sandbox pod status from SANDBOX_INSPECT_DIR.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUT="${1:-/results/dynamic-abnormal-resources.json}"
 SAMPLES="${2:-}"
 python3 - "${OUT}" "${SAMPLES}" <<'PY' | python3 "${SCRIPT_DIR}/emit_findings.py" --subtask abnormal-resources --tool kepler --out "${OUT}"
 import json, os, sys
+from pathlib import Path
 
 samples_path = sys.argv[2]
 cpu_max = float(os.environ.get("CPU_CEILING_CORES", "8"))
 mem_max = float(os.environ.get("MEM_CEILING_BYTES", str(32 * 1024**3)))
 gpu_w_max = float(os.environ.get("GPU_POWER_CEILING_WATTS", "400"))
 findings = []
-if not samples_path or not os.path.isfile(samples_path):
-    # Fixture lives on unit ConfigMaps, not next to HF weights. Missing ≠ hard-gate fail.
-    print("[]")
-    raise SystemExit
-else:
-    data = json.loads(open(samples_path).read() or "{}")
+
+def score_samples(data):
     cpu = float(data.get("cpuCoresMax") or 0)
     mem = float(data.get("rssBytesMax") or 0)
     gpu = float(data.get("gpuPowerWattsMax") or 0)
@@ -46,5 +43,49 @@ else:
             "risk": "high",
             "tool_used": "kepler",
         })
-print(json.dumps(findings))
+
+if samples_path and os.path.isfile(samples_path):
+    data = json.loads(open(samples_path).read() or "{}")
+    score_samples(data)
+    print(json.dumps(findings))
+    raise SystemExit
+
+inspect_dir = (os.environ.get("SANDBOX_INSPECT_DIR") or "").strip()
+if inspect_dir:
+    pods_path = Path(inspect_dir) / "pods.json"
+    oom = False
+    items = []
+    if pods_path.is_file():
+        try:
+            doc = json.loads(pods_path.read_text() or "{}")
+        except json.JSONDecodeError:
+            doc = {}
+        if isinstance(doc, dict):
+            if isinstance(doc.get("items"), list):
+                items = doc["items"]
+            elif doc.get("kind") == "Pod":
+                items = [doc]
+    for pod in items:
+        if not isinstance(pod, dict):
+            continue
+        for cs in (pod.get("status") or {}).get("containerStatuses") or []:
+            term = (cs.get("lastState") or {}).get("terminated") or (cs.get("state") or {}).get("terminated") or {}
+            reason = str(term.get("reason") or "")
+            if reason == "OOMKilled" or int(cs.get("restartCount") or 0) > 3:
+                oom = True
+    if oom:
+        findings.append({
+            "issue": "OOM during sandbox load",
+            "risk": "critical",
+            "tool_used": "kepler",
+        })
+    findings.append({
+        "issue": "Kepler samples missing for sandbox serving pod; used pod OOM/restart status only",
+        "risk": "medium",
+        "tool_used": "kepler",
+    })
+    print(json.dumps(findings))
+    raise SystemExit
+
+print("[]")
 PY

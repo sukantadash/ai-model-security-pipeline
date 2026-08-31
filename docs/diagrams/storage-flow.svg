@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 660" role="img" aria-label="MinIO and PVC storage flow">
+<rect x="0" y="0" width="1440" height="660" rx="0" fill="#F8F8F8" stroke="#F8F8F8" stroke-width="0"/>
+<defs><marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="#6A6E73"/></marker></defs>
+<text x="40" y="40" fill="#151515" font-size="18" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Storage flow  |  weights vs scan JSON</text>
+<text x="40" y="62" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Version = last five characters of PipelineRun name (model-security-9x57m -&gt; 9x57m).</text>
+<rect x="40" y="100" width="240" height="80" rx="6" fill="#FFF5F5" stroke="#C9190B" stroke-width="1"/>
+<text x="52" y="122" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">1. Hugging Face / vendor</text>
+<text x="52" y="140" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">hf://org/model</text>
+<rect x="320" y="100" width="240" height="80" rx="6" fill="#FFF5F5" stroke="#C9190B" stroke-width="1"/>
+<text x="332" y="122" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">2. models-ingress</text>
+<text x="332" y="140" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">s3://models-ingress/&lt;id&gt;/</text>
+<rect x="600" y="100" width="240" height="80" rx="6" fill="#E7F1FA" stroke="#0066CC" stroke-width="1"/>
+<text x="612" y="122" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">3. eval-workspace PVC</text>
+<text x="612" y="140" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">/models  (weights only)</text>
+<rect x="880" y="100" width="240" height="80" rx="6" fill="#E7F1FA" stroke="#0066CC" stroke-width="1"/>
+<text x="892" y="122" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">4. models-eval scan-result</text>
+<text x="892" y="140" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">s3://models-eval/&lt;id&gt;/&lt;ver&gt;/</text>
+<rect x="1160" y="100" width="240" height="80" rx="6" fill="#FFF4D4" stroke="#F0AB00" stroke-width="1"/>
+<text x="1172" y="122" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">5. score.json</text>
+<text x="1172" y="140" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">routing auto-pass/review/reject</text>
+<line x1="280" y1="140" x2="320" y2="140" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="560" y1="140" x2="600" y2="140" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="840" y1="140" x2="880" y2="140" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="1120" y1="140" x2="1160" y2="140" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
+<text x="40" y="220" fill="#3E8635" font-size="14" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">On auto-pass only</text>
+<rect x="40" y="240" width="320" height="80" rx="6" fill="#E9F7E6" stroke="#3E8635" stroke-width="1"/>
+<text x="52" y="262" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">6. models-verified</text>
+<text x="52" y="280" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">s3://models-verified/&lt;id&gt;/&lt;ver&gt;/  weights</text>
+<rect x="400" y="240" width="320" height="80" rx="6" fill="#E9F7E6" stroke="#3E8635" stroke-width="1"/>
+<text x="412" y="262" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">7. Model Registry</text>
+<text x="412" y="280" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">POST registered_models + URIs</text>
+<rect x="760" y="240" width="320" height="80" rx="6" fill="#E9F7E6" stroke="#3E8635" stroke-width="1"/>
+<text x="772" y="262" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">8. GitOps LLMInferenceService</text>
+<text x="772" y="280" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">model-test KServe + vLLM</text>
+<rect x="1120" y="240" width="280" height="80" rx="6" fill="#FFF4D4" stroke="#F0AB00" stroke-width="1"/>
+<text x="1132" y="262" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">always: manifest.json</text>
+<text x="1132" y="280" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">archive-results finally</text>
+<line x1="360" y1="280" x2="400" y2="280" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="720" y1="280" x2="760" y2="280" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
+<text x="40" y="360" fill="#151515" font-size="14" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Scan-result objects (not on the PVC)</text>
+<rect x="40" y="380" width="1360" height="36" rx="4" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="52" y="404" fill="#151515" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">static-malware.json  |  static-vulnerabilities.json  |  static-license-compliance.json  -&gt;  static-scan.json</text>
+<rect x="40" y="424" width="1360" height="36" rx="4" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="52" y="448" fill="#151515" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">dynamic-isolated-runtime.json  |  dynamic-behavior.json  |  dynamic-abnormal-resources.json  |  dynamic-basic-inference.json  -&gt;  dynamic-scan.json</text>
+<rect x="40" y="468" width="1360" height="36" rx="4" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="52" y="492" fill="#151515" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">capability-quality.json  |  capability-performance-cost.json  |  capability-stability.json  |  capability-anomaly-bias.json  -&gt;  capability.json</text>
+<rect x="40" y="512" width="1360" height="36" rx="4" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="52" y="536" fill="#151515" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">adversarial-prompt-injection.json  |  adversarial-jailbreak-*.json  |  adversarial-harmful-*.json  -&gt;  adversarial-test.json</text>
+<rect x="40" y="556" width="1360" height="36" rx="4" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="52" y="580" fill="#151515" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">score.json   publish.json   manifest.json</text>
+<text x="40" y="620" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Buckets (anonymous=none): models-ingress, models-eval, models-verified, attestations. Scanner images live in the image registry / Quay, not MinIO.</text>
+</svg>

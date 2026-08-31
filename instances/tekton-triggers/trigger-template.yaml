@@ -24,6 +24,12 @@ spec:
             value: /workspace/models
           - name: model-registry-namespace
             value: rhoai-model-registries
+          - name: git-url
+            value: https://github.com/sukantadash/ai-model-security-pipeline.git
+          - name: model-sandbox-path
+            value: instances/model-sandbox
+          - name: model-test-path
+            value: instances/model-test/llm-models
         workspaces:
           - name: shared-data
             persistentVolumeClaim:

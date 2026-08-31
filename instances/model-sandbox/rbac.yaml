@@ -1,0 +1,36 @@
+# Pipeline SA lives in model-eval; it applies/deletes the sandbox LLMInferenceService
+# and inspects serving pods during dynamic-scan.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: model-eval-pipeline-sandbox
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+rules:
+  - apiGroups: ["serving.kserve.io"]
+    resources: ["llminferenceservices"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "pods/exec", "services", "secrets", "events", "configmaps"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: model-eval-pipeline-sandbox
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: model-eval-pipeline-sandbox
+subjects:
+  - kind: ServiceAccount
+    name: model-eval-pipeline
+    namespace: model-eval

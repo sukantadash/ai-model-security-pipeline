@@ -15,6 +15,7 @@ cd "$(dirname "$0")"
 export NS_MODEL_INGRESS="${NS_MODEL_INGRESS:-model-ingress}"
 export NS_MODEL_EVAL="${NS_MODEL_EVAL:-model-eval}"
 export NS_MODEL_TEST="${NS_MODEL_TEST:-model-test}"
+export NS_MODEL_SANDBOX="${NS_MODEL_SANDBOX:-model-sandbox}"
 export NS_BUILD_IMAGE="${NS_BUILD_IMAGE:-build-image}"
 export NS_MINIO="${NS_MINIO:-minio-system}"
 
@@ -50,16 +51,20 @@ oc get installplan -A
 # oc patch installplan <name> -n <ns> --type merge -p '{"spec":{"approved":true}}'
 
 # =============================================================================
-# Phase 2: Three zones — namespaces, NetworkPolicies, pipeline RBAC
+# Phase 2: Zones — namespaces, NetworkPolicies, pipeline RBAC
+# model-sandbox persists (pipeline never creates/deletes the namespace).
 # =============================================================================
 oc apply -k ./instances/model-ingress/ -n "${NS_MODEL_INGRESS}"
 oc apply -k ./instances/model-eval/ -n "${NS_MODEL_EVAL}"
+oc apply -k ./instances/model-sandbox/
 oc apply -k ./instances/model-test/ -n "${NS_MODEL_TEST}"
 oc apply -k ./instances/pipeline-rbac/ -n "${NS_MODEL_EVAL}"
 #
 # Verify:
-oc get ns "${NS_MODEL_INGRESS}" "${NS_MODEL_EVAL}" "${NS_MODEL_TEST}"
+oc get ns "${NS_MODEL_INGRESS}" "${NS_MODEL_EVAL}" "${NS_MODEL_SANDBOX}" "${NS_MODEL_TEST}"
 oc get sa model-eval-pipeline -n "${NS_MODEL_EVAL}"
+oc get networkpolicy,role,rolebinding -n "${NS_MODEL_SANDBOX}"
+oc get role,rolebinding -n "${NS_MODEL_TEST}" | grep model-eval-pipeline || true
 
 
 # =============================================================================
@@ -92,9 +97,16 @@ sed -i '' 's/MINIO_ROOT_PASSWORD: paassword/MINIO_ROOT_PASSWORD: CHANGE_ME_MINIO
 #
 # Secrets (see instances/secrets/README.md):
 # cp minio-s3-secret.yaml.template minio-s3-secret.yaml   # edit credentials first
-for ns in "${NS_MODEL_INGRESS}" "${NS_MODEL_EVAL}" "${NS_MODEL_TEST}"; do
+for ns in "${NS_MODEL_INGRESS}" "${NS_MODEL_EVAL}" "${NS_MODEL_SANDBOX}" "${NS_MODEL_TEST}"; do
   oc apply -f minio-s3-secret.yaml -n "${ns}"
 done
+#
+# Verify secrets:
+for ns in "${NS_MODEL_INGRESS}" "${NS_MODEL_EVAL}" "${NS_MODEL_SANDBOX}" "${NS_MODEL_TEST}"; do
+  oc get secret minio-s3 -n "${ns}"
+done
+# Optional private git clone (serve-llm-start / publish):
+# oc create secret generic git-auth -n "${NS_MODEL_EVAL}" --from-literal=token=<github-pat>
 # cp quay-secret.yaml.template quay-secret.yaml             # edit credentials first
 oc apply -f quay-secret.yaml -n "${NS_BUILD_IMAGE}"
 oc secrets link builder sudash-modelpipeline-pull-secret -n "${NS_BUILD_IMAGE}"
@@ -118,8 +130,8 @@ done
 
 oc get istag -n "${NS_BUILD_IMAGE}" | grep ai-security
 
-# Cross-namespace pull (model-ingress Job + model-eval Tekton pull from build-image):
-for ns in "${NS_MODEL_INGRESS}" "${NS_MODEL_EVAL}"; do
+# Cross-namespace pull (model-ingress Job + model-eval Tekton + model-sandbox KServe):
+for ns in "${NS_MODEL_INGRESS}" "${NS_MODEL_EVAL}" "${NS_MODEL_SANDBOX}"; do
   oc policy add-role-to-group system:image-puller "system:serviceaccounts:${ns}" -n "${NS_BUILD_IMAGE}"
 done
 
@@ -146,6 +158,17 @@ oc apply -k ./overlays/10-tekton-chains/
 # =============================================================================
 # Phase 10: Test — HF download → PipelineRun (RedHatAI/Qwen3-8B-FP8-dynamic)
 # =============================================================================
+# Local (no cluster) — run these first after code changes:
+#   pip3 install pyyaml
+#   python3 builds/publish/scripts/test_patch_llmis.py
+#   bash builds/dynamic-test/scripts/run-unit-tests.sh
+#   python3 builds/dynamic-test/scripts/test_isolated_inspect.py
+#
+# serve-llm-start clones this repo over HTTPS and patches
+# instances/model-sandbox/LLMInferenceService.yaml. Push that path to GitHub
+# before a live PipelineRun:
+#   git-url default: https://github.com/sukantadash/ai-model-security-pipeline.git
+#
 oc apply -f ./instances/model-ingress-fetch/model-fetch-job.yaml -n "${NS_MODEL_INGRESS}"
 oc wait --for=condition=complete job/model-fetch -n "${NS_MODEL_INGRESS}" --timeout=7200s
 #
@@ -234,15 +257,24 @@ oc get taskrun -l test=adversarial-test-unit -n "${NS_MODEL_EVAL}"
 
 
 
-# Full pipeline:
+# Full pipeline (git-url is in pipelinerun-example.yaml):
+# Confirm sandbox is empty of a leftover eval-* CR, then:
+oc get llminferenceservice -n "${NS_MODEL_SANDBOX}"
+oc get secret minio-s3 -n "${NS_MODEL_SANDBOX}"
+oc get pipeline.tekton.dev model-security-pipeline -n "${NS_MODEL_EVAL}" \
+  -o jsonpath='{.spec.params[?(@.name=="git-url")].default}{"\n"}'
 oc create -f ./instances/tekton-pipeline/pipelinerun-example.yaml -n "${NS_MODEL_EVAL}"
-#
-# After pass — update GitOps manifest from publish results:
-# instances/model-test/llm-models/qwen3-8b-fp8-verified.yaml
-oc apply -k ./overlays/16-test-serving/ -n "${NS_MODEL_TEST}"
 #
 # Watch:
 oc get pipelinerun -n "${NS_MODEL_EVAL}" -w
+#
+# After serve-llm-start: CR is in model-sandbox (not model-eval):
+#   oc get llminferenceservice,svc,pod -n "${NS_MODEL_SANDBOX}"
+# After finally: CR deleted, namespace remains:
+#   oc get ns "${NS_MODEL_SANDBOX}"
+#   oc get llminferenceservice -n "${NS_MODEL_SANDBOX}"
+# Auto-pass applies a CR in model-test from the patched git path (publish-artifact).
+# Overlay 16 is optional if you still want GitOps/manual apply of the same YAML.
 
 # =============================================================================
 # Phase 11: RHOAI platform (DSC + dashboard + Model Registry)
@@ -261,7 +293,14 @@ oc get modelregistry -n rhoai-model-registries
 # =============================================================================
 # Phase 12: Inference gateway + TLS
 # =============================================================================
-# Edit instances/gateway/gateway.yaml (hostname) and tlspolicy.yaml (issuer), then:
+# Lab/demo cluster FQDNs must not be committed. Set hostname from this cluster:
+#   APPS_DOMAIN=$(oc get ingresses.config/cluster -o jsonpath='{.spec.domain}')
+#   echo "inference-gateway.${APPS_DOMAIN}"
+# Edit instances/gateway/gateway.yaml — replace REPLACE_WITH_CLUSTER_APPS_DOMAIN:
+#   hostname: inference-gateway.${APPS_DOMAIN}
+# Edit instances/gateway/tlspolicy.yaml issuerRef.name (oc get clusterissuer).
+# Optional GuideLLM — same domain in instances/guidellm-benchmark/guidellm-benchmark-job.yaml:
+#   GUIDELLM_TARGET=https://inference-gateway.${APPS_DOMAIN}/${NS_MODEL_TEST}/qwen3-8b-fp8
 oc apply -k ./overlays/13-gateway/
 oc get certificate -n openshift-ingress
 
@@ -282,12 +321,13 @@ oc apply -k ./overlays/15-hardware-profile/
 # Only needed if you removed model-test from gateway.yaml or use additional namespaces
 
 # =============================================================================
-# Phase 15: Test serving (verified model — registry-driven)
+# Phase 15: Test serving (verified model)
+# publish-artifact already oc apply's the patched LLMInferenceService in model-test
+# on auto-pass. Overlay 16 is for GitOps/manual catch-up of the same manifests.
 # =============================================================================
-# Update instances/model-test/llm-models/qwen3-8b-fp8-verified.yaml
-# (s3 URI + model-version = last five chars of PipelineRun name), then:
-oc apply -k ./overlays/16-test-serving/ -n "${NS_MODEL_TEST}"
-oc wait --for=condition=Ready llminferenceservice/qwen3-8b-fp8 -n "${NS_MODEL_TEST}" --timeout=900s
+# oc apply -k ./overlays/16-test-serving/ -n "${NS_MODEL_TEST}"
+oc get llminferenceservice -n "${NS_MODEL_TEST}"
+# oc wait --for=condition=Ready llminferenceservice -n "${NS_MODEL_TEST}" --timeout=900s
 #
 # Smoke test:
 GATEWAY_HOST=$(oc get gateway openshift-ai-inference -n openshift-ingress \
@@ -321,6 +361,7 @@ oc get application model-test-verified-models -n openshift-gitops
 # oc delete -k ./instances/minio/ -n "${NS_MINIO}"
 # oc delete -k ./instances/pipeline-rbac/ -n "${NS_MODEL_EVAL}"
 # oc delete -k ./instances/model-test/ -n "${NS_MODEL_TEST}"
+# oc delete -k ./instances/model-sandbox/
 # oc delete -k ./instances/model-eval/ -n "${NS_MODEL_EVAL}"
 # oc delete -k ./instances/model-ingress/ -n "${NS_MODEL_INGRESS}"
 # oc delete -k ./overlays/03-operator-instances/

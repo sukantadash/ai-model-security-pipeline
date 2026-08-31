@@ -8,14 +8,17 @@
 #   oc apply -f quay-secret.yaml -n model-eval
 #   oc apply -f quay-secret.yaml -n model-test
 #
-# MinIO S3 (model weights — all zones):
+# MinIO S3 (model weights — all zones). KServe also needs s3-* annotations on
+# this Secret (see minio-s3-secret.yaml.template); serve-llm-start sets them.
 #   cp minio-s3-secret.yaml.template minio-s3-secret.yaml  # edit credentials
-#   for ns in model-ingress model-eval model-test; do
+#   for ns in model-ingress model-eval model-sandbox model-test; do
 #     oc apply -f minio-s3-secret.yaml -n "${ns}"
 #   done
 #
 # MinIO root (minio-system only — edit instances/minio/secret.yaml before overlay 05):
 #
-# Hugging Face token (ingress only):
+# Optional: git clone token for private git-url (key: token).
+#   oc create secret generic git-auth -n model-eval --from-literal=token=<pat>
+#
 #   oc create secret generic hf-token -n model-ingress \
 #     --from-literal=HF_TOKEN=<your-huggingface-token>

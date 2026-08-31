@@ -1,0 +1,205 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: serve-llm-start
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+    ai.security.pipeline/stage: serve-llm
+spec:
+  description: >
+    Clone git-url, patch LLMInferenceService.yaml (name + untrusted S3 path),
+    apply in model-sandbox, wait until Ready, export the in-cluster URL.
+  params:
+  - name: model-id
+    type: string
+  - name: pipeline-run-name
+    type: string
+    default: ''
+  - name: git-url
+    type: string
+    description: Git repo that contains serving manifests
+  - name: model-sandbox-path
+    type: string
+    default: instances/model-sandbox
+  - name: git-revision
+    type: string
+    default: ''
+  - name: namespace
+    type: string
+    default: model-sandbox
+  - name: wait-timeout
+    type: string
+    default: 1800s
+  results:
+  - name: endpoint-url
+    description: In-cluster OpenAI-compatible base URL (…/v1)
+  - name: service-name
+    description: LLMInferenceService name
+  workspaces:
+  - name: results
+  steps:
+  - name: clone-patch
+    image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    env:
+    - name: GIT_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: git-auth
+          key: token
+          optional: true
+    script: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      MODEL_ID="$(params.model-id)"
+      PR="$(params.pipeline-run-name)"
+      if [[ -z "${PR}" ]]; then PR="$(context.taskRun.name)"; fi
+      VERSION="${PR: -5}"
+      NAME="eval-${VERSION}"
+      NAME="$(echo "${NAME}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | cut -c1-63)"
+      OUT="$(workspaces.results.path)/patched-sandbox"
+      rm -rf "${OUT}"
+      export GIT_URL="$(params.git-url)"
+      export GIT_PATH="$(params.model-sandbox-path)"
+      export GIT_REVISION="$(params.git-revision)"
+      export OUT_DIR="${OUT}"
+      export NAME
+      export MODEL_NAME="${MODEL_ID}"
+      export MODEL_URI="s3://models-ingress/${MODEL_ID}/"
+      export NAMESPACE="$(params.namespace)"
+      /scripts/clone-and-patch-llmis.sh
+      echo -n "${NAME}" > "$(workspaces.results.path)/service-name"
+  - name: apply
+    image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+    envFrom:
+    - secretRef:
+        name: minio-s3
+    script: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      NS="$(params.namespace)"
+      MODEL_ID="$(params.model-id)"
+      NAME="$(cat "$(workspaces.results.path)/service-name")"
+      PR="$(params.pipeline-run-name)"
+      if [[ -z "${PR}" ]]; then PR="$(context.taskRun.name)"; fi
+      ENDPOINT="${AWS_ENDPOINT_URL:-${MINIO_ENDPOINT:-http://minio.minio-system.svc:9000}}"
+      HTTPS=0
+      case "${ENDPOINT}" in https://*) HTTPS=1 ;; esac
+      HOSTPORT="${ENDPOINT#http://}"
+      HOSTPORT="${HOSTPORT#https://}"
+      HOSTPORT="${HOSTPORT%/}"
+      oc create secret generic minio-s3 -n "${NS}" \
+        --from-literal=MINIO_ENDPOINT="${MINIO_ENDPOINT:-${ENDPOINT}}" \
+        --from-literal=AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
+        --from-literal=AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
+        --from-literal=AWS_REGION="${AWS_REGION:-us-east-1}" \
+        --from-literal=AWS_ENDPOINT_URL="${ENDPOINT}" \
+        --from-literal=AWS_DEFAULT_REGION="${AWS_REGION:-us-east-1}" \
+        --from-literal=S3_USE_HTTPS="${HTTPS}" \
+        --from-literal=S3_VERIFY_SSL="0" \
+        --from-literal=AWS_S3_FORCE_PATH_STYLE="true" \
+        --dry-run=client -o yaml | oc apply -f -
+      oc annotate secret minio-s3 -n "${NS}" --overwrite \
+        "serving.kserve.io/s3-endpoint=${HOSTPORT}" \
+        "serving.kserve.io/s3-usehttps=${HTTPS}" \
+        "serving.kserve.io/s3-region=${AWS_REGION:-us-east-1}" \
+        "serving.kserve.io/s3-verifyssl=0" \
+        "serving.kserve.io/s3-useanoncredential=false" \
+        "serving.kserve.io/s3-usevirtualbucket=false"
+      PATCHED="$(workspaces.results.path)/patched-sandbox"
+      oc apply -n "${NS}" -f "${PATCHED}"
+      oc annotate "llminferenceservice/${NAME}" -n "${NS}" --overwrite \
+        "security.platform/eval-pipelinerun=${PR}" \
+        "security.platform/source-pipeline=model-security-pipeline" || true
+      oc wait --for=condition=Ready "llminferenceservice/${NAME}" -n "${NS}" --timeout="$(params.wait-timeout)"
+      SVC="$(oc get svc -n "${NS}" -l "app.kubernetes.io/name=${NAME},kserve.io/component=workload" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)"
+      if [[ -z "${SVC}" ]]; then
+        SVC="${NAME}-kserve-workload-svc"
+        oc get svc "${SVC}" -n "${NS}" >/dev/null 2>&1 || SVC=""
+      fi
+      URL=""
+      if [[ -n "${SVC}" ]]; then
+        PORT="$(oc get svc "${SVC}" -n "${NS}" -o jsonpath='{.spec.ports[0].port}')"
+        APPP="$(oc get svc "${SVC}" -n "${NS}" -o jsonpath='{.spec.ports[0].appProtocol}')"
+        PNAME="$(oc get svc "${SVC}" -n "${NS}" -o jsonpath='{.spec.ports[0].name}')"
+        SCHEME=http
+        if [[ "${APPP}" == "https" || "${PNAME}" == "https" ]]; then SCHEME=https; fi
+        URL="${SCHEME}://${SVC}.${NS}.svc:${PORT}"
+      fi
+      if [[ -z "${URL}" ]]; then
+        URL="$(oc get "llminferenceservice/${NAME}" -n "${NS}" -o jsonpath='{.status.addresses[0].url}' 2>/dev/null || true)"
+      fi
+      if [[ -z "${URL}" ]]; then
+        URL="$(oc get "llminferenceservice/${NAME}" -n "${NS}" -o jsonpath='{.status.address.url}' 2>/dev/null || true)"
+      fi
+      if [[ -z "${URL}" ]]; then
+        URL="$(oc get "llminferenceservice/${NAME}" -n "${NS}" -o jsonpath='{.status.url}' 2>/dev/null || true)"
+      fi
+      if [[ -z "${URL}" ]]; then
+        echo "LLMInferenceService ${NAME} is Ready but no in-cluster URL was found" >&2
+        oc get "llminferenceservice/${NAME}" -n "${NS}" -o yaml >&2 || true
+        oc get svc -n "${NS}" >&2 || true
+        exit 1
+      fi
+      case "${URL}" in
+        */v1|*/v1/) BASE="${URL%/}" ;;
+        *) BASE="${URL%/}/v1" ;;
+      esac
+      mkdir -p "$(workspaces.results.path)"
+      cat >"$(workspaces.results.path)/vllm-endpoint.json" <<JSON
+      {
+        "base_url": "${BASE}",
+        "model": "${MODEL_ID}",
+        "service_name": "${NAME}",
+        "namespace": "${NS}",
+        "tls_verify": false
+      }
+      JSON
+      echo -n "${BASE}" > "$(results.endpoint-url.path)"
+      echo -n "${NAME}" > "$(results.service-name.path)"
+      echo "endpoint ${BASE} service ${NAME} namespace ${NS}"
+  - name: upload
+    image: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-publish:latest
+    envFrom:
+    - secretRef:
+        name: minio-s3
+    script: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      source /scripts/s3-common.sh
+      MODEL_ID="$(params.model-id)"
+      PR="$(params.pipeline-run-name)"
+      if [[ -z "${PR}" ]]; then PR="$(context.taskRun.name)"; fi
+      VERSION="$(model_version_from_run "${PR}")"
+      FILE="$(workspaces.results.path)/vllm-endpoint.json"
+      s3_put_scan_result "${MODEL_ID}" "${VERSION}" "${FILE}"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: serve-llm-stop
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+    ai.security.pipeline/stage: serve-llm
+spec:
+  description: Delete the sandbox LLMInferenceService for this PipelineRun. Does not delete the namespace.
+  params:
+  - name: pipeline-run-name
+    type: string
+    default: ''
+  - name: namespace
+    type: string
+    default: model-sandbox
+  steps:
+  - name: delete
+    image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+    script: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      NS="$(params.namespace)"
+      PR="$(params.pipeline-run-name)"
+      if [[ -z "${PR}" ]]; then PR="$(context.taskRun.name)"; fi
+      VERSION="${PR: -5}"
+      NAME="eval-${VERSION}"
+      NAME="$(echo "${NAME}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | cut -c1-63)"
+      oc delete llminferenceservice "${NAME}" -n "${NS}" --ignore-not-found --wait=true --timeout=180s
+      echo "deleted ${NAME} in ${NS} (namespace kept)"

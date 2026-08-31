@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - fetch-artifact.yaml
   - static-scan.yaml
+  - serve-llm.yaml
   - dynamic-scan.yaml
   - capability-eval.yaml
   - adversarial-test.yaml

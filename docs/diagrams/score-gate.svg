@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 620" role="img" aria-label="Score gate formula and routing">
+<rect x="0" y="0" width="1280" height="620" rx="0" fill="#F8F8F8" stroke="#F8F8F8" stroke-width="0"/>
+<defs><marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="#6A6E73"/></marker></defs>
+<text x="40" y="40" fill="#151515" font-size="18" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Score gate  |  builds/score-gate/policy.json</text>
+<text x="40" y="62" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">S_total = 0.40*S_static + 0.35*S_capability + 0.25*S_redteam. Dynamic-scan is a hard gate, not a weight.</text>
+<rect x="40" y="90" width="280" height="120" rx="6" fill="#E7F1FA" stroke="#0066CC" stroke-width="1"/>
+<text x="52" y="112" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">S_static  (40%)</text>
+<text x="52" y="130" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Start 100. Subtract CVE, license, ModelAudit, Fickling, ModelScan, Magika. Caps apply.</text>
+<rect x="340" y="90" width="280" height="120" rx="6" fill="#E7F1FA" stroke="#0066CC" stroke-width="1"/>
+<text x="352" y="112" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">S_capability  (35%)</text>
+<text x="352" y="130" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Start 100. Per-risk: crit 25, high 12, med 6, low 2.</text>
+<rect x="640" y="90" width="280" height="120" rx="6" fill="#E7F1FA" stroke="#0066CC" stroke-width="1"/>
+<text x="652" y="112" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">S_redteam  (25%)</text>
+<text x="652" y="130" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Start 100. Per-risk: crit 65, high 15, med 8, low 3.</text>
+<rect x="940" y="90" width="280" height="120" rx="6" fill="#FFF5F5" stroke="#C9190B" stroke-width="1"/>
+<text x="952" y="112" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Dynamic hard gate</text>
+<text x="952" y="130" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">critical or high in dynamic-scan.json =&gt; reject. Not in S_total.</text>
+<line x1="180" y1="210" x2="180" y2="250" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="480" y1="210" x2="480" y2="250" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="780" y1="210" x2="780" y2="250" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="1080" y1="210" x2="1080" y2="250" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
+<rect x="40" y="250" width="1180" height="70" rx="8" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="60" y="280" fill="#151515" font-size="13" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">score-gate downloads scan-result/*.json, writes score.json, uploads. Exits 1 only when routing=reject (after the file is written).</text>
+<text x="60" y="302" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">publish-artifact when tasks.score-gate.results.passed == true.</text>
+<rect x="40" y="350" width="380" height="140" rx="8" fill="#3E8635" stroke="#3E8635" stroke-width="0"/>
+<text x="230" y="400" fill="#fff" font-size="20" font-weight="700" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">&gt;= 85   Auto-pass</text>
+<text x="230" y="430" fill="#fff" font-size="13" font-weight="400" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Pipeline succeeded. Publish + register.</text>
+<text x="230" y="454" fill="#fff" font-size="12" font-weight="400" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">GitOps may serve in model-test.</text>
+<rect x="440" y="350" width="380" height="140" rx="8" fill="#F0AB00" stroke="#F0AB00" stroke-width="0"/>
+<text x="630" y="400" fill="#151515" font-size="20" font-weight="700" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">70-84   Review</text>
+<text x="630" y="430" fill="#151515" font-size="13" font-weight="400" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Pipeline succeeded. passed=false.</text>
+<text x="630" y="454" fill="#151515" font-size="12" font-weight="400" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">No promote. Human decision.</text>
+<rect x="840" y="350" width="380" height="140" rx="8" fill="#C9190B" stroke="#C9190B" stroke-width="0"/>
+<text x="1030" y="392" fill="#fff" font-size="18" font-weight="700" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">&lt; 70  or  hard gate</text>
+<text x="1030" y="420" fill="#fff" font-size="14" font-weight="400" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">or missing required JSON</text>
+<text x="1030" y="448" fill="#fff" font-size="13" font-weight="400" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Pipeline failed. Stay quarantined.</text>
+<text x="40" y="530" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">License needle: missing/copyleft -40 =&gt; S_static=60 =&gt; S_total=84 (review). Deny AGPL/SSPL/NC -80 =&gt; S_static=20 =&gt; S_total=68 (reject).</text>
+<text x="40" y="552" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Immediate-fail (Task, not only score): ModelAudit exec/eval/os.system/pickle, ClamAV FOUND, tool missing / empty SBOM.</text>
+<text x="40" y="574" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Known gap: missing capability/adversarial/Falco/Kepler fixtures emit [] (silent 100 / pass) on a real HF tree.</text>
+</svg>

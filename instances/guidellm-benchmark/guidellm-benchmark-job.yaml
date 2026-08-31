@@ -14,8 +14,11 @@ spec:
       - name: guidellm
         image: ghcr.io/vllm-project/guidellm:latest
         env:
+          # Replace REPLACE_WITH_CLUSTER_APPS_DOMAIN (see script.sh Phase 12 / optional GuideLLM).
+          #   APPS_DOMAIN=$(oc get ingresses.config/cluster -o jsonpath='{.spec.domain}')
+          # APPS_DOMAIN already includes the apps. prefix.
           - name: GUIDELLM_TARGET
-            value: "https://inference-gateway.apps.cluster-bvbpt.bvbpt.sandbox5358.opentlc.com/demo-llm/qwen"
+            value: "https://inference-gateway.REPLACE_WITH_CLUSTER_APPS_DOMAIN/model-test/qwen3-8b-fp8"
           - name: GUIDELLM_PROFILE
             value: throughput
           - name: GUIDELLM_RATE

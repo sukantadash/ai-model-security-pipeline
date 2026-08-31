@@ -1,9 +1,10 @@
-# Phase 3: Three security zones — namespaces, NetworkPolicies, pipeline RBAC.
+# Phase 3: Security zones — namespaces, NetworkPolicies, pipeline RBAC.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
   - ../../instances/model-ingress
   - ../../instances/model-eval
+  - ../../instances/model-sandbox
   - ../../instances/model-test
   - ../../instances/pipeline-rbac

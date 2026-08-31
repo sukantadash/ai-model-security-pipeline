@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 810" role="img" aria-label="Three-zone AI model security architecture">
+<rect x="0" y="0" width="1440" height="810" rx="0" fill="#F8F8F8" stroke="#F8F8F8" stroke-width="0"/>
+<defs><marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="#6A6E73"/></marker></defs>
+<text x="40" y="40" fill="#151515" font-size="20" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">AI Model Security Platform</text>
+<text x="40" y="62" fill="#6A6E73" font-size="13" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Zero-trust LLM intake on OpenShift + OpenShift AI. Fail closed.</text>
+<rect x="930" y="20" width="100" height="24" rx="4" fill="#C9190B" stroke="#C9190B" stroke-width="0"/>
+<text x="980.0" y="37" fill="#fff" font-size="11" font-weight="600" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">OpenShift</text>
+<rect x="1040" y="20" width="118" height="24" rx="4" fill="#0066CC" stroke="#0066CC" stroke-width="0"/>
+<text x="1099.0" y="37" fill="#fff" font-size="11" font-weight="600" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">OpenShift AI</text>
+<rect x="1168" y="20" width="64" height="24" rx="4" fill="#151515" stroke="#151515" stroke-width="0"/>
+<text x="1200.0" y="37" fill="#fff" font-size="11" font-weight="600" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">RHEL</text>
+<rect x="1242" y="20" width="118" height="24" rx="4" fill="#3D2C29" stroke="#3D2C29" stroke-width="0"/>
+<text x="1301.0" y="37" fill="#fff" font-size="11" font-weight="600" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">GitOps / Quay</text>
+<rect x="24" y="88" width="280" height="680" rx="10" fill="#FFFFFF" stroke="#C9190B" stroke-width="2" stroke-dasharray="7 5"/>
+<text x="44" y="116" fill="#C9190B" font-size="16" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">1. Ingress</text>
+<text x="44" y="136" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">model-ingress</text>
+<text x="44" y="154" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Untrusted. No trust assumed.</text>
+<rect x="44" y="176" width="240" height="70" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="56" y="198" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Model hubs / vendors</text>
+<text x="56" y="216" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Hugging Face, GGUF, Safetensors, PyTorch</text>
+<rect x="44" y="258" width="240" height="70" rx="6" fill="#FFF5F5" stroke="#C9190B" stroke-width="1"/>
+<text x="56" y="280" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Envoy + NetworkPolicy</text>
+<text x="56" y="298" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Rate limit, egress blockade</text>
+<rect x="44" y="340" width="240" height="70" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="56" y="362" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">MinIO models-ingress</text>
+<text x="56" y="380" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">s3://models-ingress/&lt;model-id&gt;/</text>
+<rect x="44" y="422" width="240" height="70" rx="6" fill="#FFF5F5" stroke="#C9190B" stroke-width="1"/>
+<text x="56" y="444" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Tekton Trigger</text>
+<text x="56" y="462" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">EventListener fires PipelineRun</text>
+<text x="164" y="530" fill="#C9190B" font-size="12" font-weight="600" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">artifact event -&gt;</text>
+<rect x="328" y="88" width="720" height="680" rx="10" fill="#FFFFFF" stroke="#0066CC" stroke-width="2"/>
+<text x="348" y="116" fill="#0066CC" font-size="16" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">2. Evaluation  |  OpenShift Pipelines</text>
+<text x="348" y="136" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">model-eval  |  no public HF  |  restricted SCC  |  Kata target</text>
+<rect x="348" y="160" width="160" height="92" rx="6" fill="#E7F1FA" stroke="#0066CC" stroke-width="1"/>
+<text x="358" y="182" fill="#151515" font-size="13" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Static scan</text>
+<text x="358" y="202" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Malware, CVE, license</text>
+<text x="358" y="232" fill="#0066CC" font-size="11" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">40% of S_total</text>
+<rect x="524" y="160" width="160" height="92" rx="6" fill="#FFF5F5" stroke="#C9190B" stroke-width="1"/>
+<text x="534" y="182" fill="#151515" font-size="13" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Dynamic scan</text>
+<text x="534" y="202" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Kata, Falco, Kepler, vLLM</text>
+<text x="534" y="232" fill="#C9190B" font-size="11" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Hard gate</text>
+<rect x="700" y="160" width="160" height="92" rx="6" fill="#E7F1FA" stroke="#0066CC" stroke-width="1"/>
+<text x="710" y="182" fill="#151515" font-size="13" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Capability</text>
+<text x="710" y="202" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Quality, cost, stability, bias</text>
+<text x="710" y="232" fill="#0066CC" font-size="11" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">35% of S_total</text>
+<rect x="876" y="160" width="148" height="92" rx="6" fill="#E7F1FA" stroke="#0066CC" stroke-width="1"/>
+<text x="886" y="182" fill="#151515" font-size="13" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Adversarial</text>
+<text x="886" y="202" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Injection, jailbreak, harm</text>
+<text x="886" y="232" fill="#0066CC" font-size="11" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">25% of S_total</text>
+<rect x="348" y="268" width="676" height="168" rx="8" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="368" y="296" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">DAG: fetch -&gt; static(3) -&gt; dynamic(4) -&gt; capability(4) -&gt; adversarial(3) -&gt; gate</text>
+<text x="368" y="318" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">S_total = 0.40*S_static + 0.35*S_capability + 0.25*S_redteam</text>
+<rect x="368" y="338" width="200" height="76" rx="6" fill="#3E8635" stroke="#3E8635" stroke-width="0"/>
+<text x="468" y="368" fill="#fff" font-size="14" font-weight="700" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">&gt;= 85  Auto-pass</text>
+<text x="468" y="388" fill="#fff" font-size="11" font-weight="400" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Sign, promote, serve</text>
+<rect x="584" y="338" width="200" height="76" rx="6" fill="#F0AB00" stroke="#F0AB00" stroke-width="0"/>
+<text x="684" y="368" fill="#151515" font-size="14" font-weight="700" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">70-84  Review</text>
+<text x="684" y="388" fill="#151515" font-size="11" font-weight="400" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Succeeds, no publish</text>
+<rect x="800" y="338" width="200" height="76" rx="6" fill="#C9190B" stroke="#C9190B" stroke-width="0"/>
+<text x="900" y="368" fill="#fff" font-size="14" font-weight="700" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">&lt; 70 / hard gate</text>
+<text x="900" y="388" fill="#fff" font-size="11" font-weight="400" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Reject, stay quarantined</text>
+<rect x="348" y="452" width="328" height="100" rx="6" fill="#E7F1FA" stroke="#0066CC" stroke-width="1"/>
+<text x="360" y="474" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Score gate + Tekton Chains</text>
+<text x="360" y="492" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Policy-as-code. SLSA provenance. Cosign on PipelineRun.</text>
+<rect x="696" y="452" width="328" height="100" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="708" y="474" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Scanner images on RHEL UBI 9</text>
+<text x="708" y="492" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">BuildConfig in build-image -&gt; Quay / internal registry.</text>
+<text x="688" y="590" fill="#0066CC" font-size="12" font-weight="600" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">signed, scored artifact -&gt;</text>
+<text x="688" y="720" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Tasks isolated. Dynamic probes DNS-only. Scan JSON in MinIO, not the eval PVC.</text>
+<rect x="1072" y="88" width="344" height="680" rx="10" fill="#FFFFFF" stroke="#3E8635" stroke-width="2" stroke-dasharray="7 5"/>
+<text x="1092" y="116" fill="#3E8635" font-size="16" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">3. Test</text>
+<text x="1092" y="136" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">OpenShift AI  |  model-test</text>
+<text x="1092" y="154" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Only auto-pass models arrive.</text>
+<rect x="1092" y="176" width="304" height="70" rx="6" fill="#E9F7E6" stroke="#3E8635" stroke-width="1"/>
+<text x="1104" y="198" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">RHOAI Model Registry</text>
+<text x="1104" y="216" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">version, storage_uri, scan_uri</text>
+<rect x="1092" y="258" width="304" height="70" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="1104" y="280" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Quay + Cosign</text>
+<text x="1104" y="298" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Scanner images; verify at pull</text>
+<rect x="1092" y="340" width="304" height="70" rx="6" fill="#E9F7E6" stroke="#3E8635" stroke-width="1"/>
+<text x="1104" y="362" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">OpenShift GitOps</text>
+<text x="1104" y="380" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Argo CD syncs LLMInferenceService</text>
+<rect x="1092" y="422" width="304" height="70" rx="6" fill="#E9F7E6" stroke="#3E8635" stroke-width="1"/>
+<text x="1104" y="444" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">KServe + vLLM</text>
+<text x="1104" y="462" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Live chat only after the gate</text>
+<rect x="1092" y="504" width="304" height="70" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="1104" y="526" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">KEDA + observability</text>
+<text x="1104" y="544" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">GPU / queue scale; Prometheus</text>
+<rect x="1092" y="586" width="304" height="88" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="1104" y="608" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">model-prod (later, manual)</text>
+<text x="1104" y="626" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Demo stops at signed test serving.</text>
+</svg>

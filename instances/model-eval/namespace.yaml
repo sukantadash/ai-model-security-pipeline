@@ -5,5 +5,7 @@ metadata:
   labels:
     app.kubernetes.io/part-of: ai-model-security-pipeline
     security.platform/zone: evaluation
+    opendatahub.io/dashboard: "true"
+    modelmesh-enabled: "false"
   annotations:
     openshift.io/display-name: "Model Security - Evaluation Zone"

@@ -1,0 +1,20 @@
+# serve-llm-start/stop run `oc apply`/`oc delete` against the Kubernetes API.
+# OVN evaluates kube-apiserver after DNAT (node:6443), so ClusterIP:443 rules
+# never match. EventListener already uses unrestricted egress for the same reason.
+# Do not open this for all eval pods — isolated-runtime treats API reachability
+# as a critical finding.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: serve-llm-allow-kube-apiserver
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+    ai.security.pipeline/stage: serve-llm
+spec:
+  podSelector:
+    matchLabels:
+      ai.security.pipeline/stage: serve-llm
+  policyTypes:
+    - Egress
+  egress:
+    - {}

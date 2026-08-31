@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/part-of: ai-model-security-pipeline
     ai.security.pipeline/stage: dynamic-scan
 spec:
-  description: Dynamic-scan subtask — isolated runtime (Kata + NetworkPolicy).
+  description: Dynamic-scan subtask — inspect the sandbox LLMInferenceService pod.
   params:
   - name: image
     type: string
@@ -17,6 +17,13 @@ spec:
   - name: pipeline-run-name
     type: string
     default: ''
+  - name: sandbox-namespace
+    type: string
+    default: model-sandbox
+  - name: service-name
+    type: string
+    default: ''
+    description: LLMInferenceService name from serve-llm-start (empty for unit fixtures)
   results:
   - name: result-file
     description: Path to isolated-runtime findings JSON
@@ -24,16 +31,47 @@ spec:
   - name: models
   - name: results
   steps:
+  - name: inspect
+    image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+    script: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      DIR="$(workspaces.results.path)/sandbox-inspect"
+      mkdir -p "${DIR}"
+      NS="$(params.sandbox-namespace)"
+      NAME="$(params.service-name)"
+      if [[ -z "${NAME}" ]]; then
+        echo '{"kind":"List","items":[]}' > "${DIR}/llmis.json"
+        echo '{"kind":"List","items":[]}' > "${DIR}/pods.json"
+        echo '{"kind":"List","items":[]}' > "${DIR}/networkpolicies.json"
+        echo '{"kind":"List","items":[]}' > "${DIR}/events.json"
+        echo "unit fixture: skip cluster inspect"
+        exit 0
+      fi
+      oc get llminferenceservice "${NAME}" -n "${NS}" -o json > "${DIR}/llmis.json" || echo '{"kind":"Status"}' > "${DIR}/llmis.json"
+      oc get pods -n "${NS}" -l "app.kubernetes.io/name=${NAME}" -o json > "${DIR}/pods.json" || true
+      if [[ ! -s "${DIR}/pods.json" ]] || ! grep -q '"items"' "${DIR}/pods.json"; then
+        oc get pods -n "${NS}" -o json > "${DIR}/pods.json" || echo '{"items":[]}' > "${DIR}/pods.json"
+      fi
+      oc get networkpolicy -n "${NS}" -o json > "${DIR}/networkpolicies.json" || echo '{"items":[]}' > "${DIR}/networkpolicies.json"
+      oc get events -n "${NS}" -o json > "${DIR}/events.json" || echo '{"items":[]}' > "${DIR}/events.json"
+    onError: continue
   - name: scan
     image: $(params.image)
     env:
     - name: RUNTIME_CLASS
       value: kata
+    - name: SANDBOX_INSPECT_DIR
+      value: $(workspaces.results.path)/sandbox-inspect
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
       trap 'echo $? > "$(workspaces.results.path)/.step-rc"' EXIT
       OUT="$(workspaces.results.path)/dynamic-isolated-runtime.json"
+      NAME="$(params.service-name)"
+      if [[ -z "${NAME}" ]]; then
+        unset SANDBOX_INSPECT_DIR
+      fi
       /scripts/run-isolated-runtime.sh "${OUT}"
       echo -n "${OUT}" > "$(results.result-file.path)"
     onError: continue
@@ -82,6 +120,12 @@ spec:
   - name: pipeline-run-name
     type: string
     default: ''
+  - name: sandbox-namespace
+    type: string
+    default: model-sandbox
+  - name: service-name
+    type: string
+    default: ''
   results:
   - name: result-file
     description: Path to behavior findings JSON
@@ -89,18 +133,42 @@ spec:
   - name: models
   - name: results
   steps:
+  - name: inspect
+    image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+    script: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      DIR="$(workspaces.results.path)/sandbox-inspect"
+      mkdir -p "${DIR}"
+      NS="$(params.sandbox-namespace)"
+      NAME="$(params.service-name)"
+      if [[ -z "${NAME}" ]]; then
+        echo '{"items":[]}' > "${DIR}/events.json"
+        echo '{"items":[]}' > "${DIR}/pods.json"
+        exit 0
+      fi
+      oc get events -n "${NS}" -o json > "${DIR}/events.json" || echo '{"items":[]}' > "${DIR}/events.json"
+      oc get pods -n "${NS}" -o json > "${DIR}/pods.json" || echo '{"items":[]}' > "${DIR}/pods.json"
+    onError: continue
   - name: scan
     image: $(params.image)
+    env:
+    - name: SANDBOX_INSPECT_DIR
+      value: $(workspaces.results.path)/sandbox-inspect
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
       trap 'echo $? > "$(workspaces.results.path)/.step-rc"' EXIT
       OUT="$(workspaces.results.path)/dynamic-behavior.json"
       ALERTS="$(workspaces.models.path)/$(params.alerts-file)"
+      NAME="$(params.service-name)"
+      if [[ -z "${NAME}" ]]; then
+        unset SANDBOX_INSPECT_DIR
+      fi
       if [[ -f "${ALERTS}" ]]; then
         /scripts/run-behavior.sh "${OUT}" "${ALERTS}"
       else
-        echo '[]' > "${OUT}"
+        /scripts/run-behavior.sh "${OUT}"
       fi
       echo -n "${OUT}" > "$(results.result-file.path)"
     onError: continue
@@ -135,7 +203,7 @@ metadata:
     app.kubernetes.io/part-of: ai-model-security-pipeline
     ai.security.pipeline/stage: dynamic-scan
 spec:
-  description: Dynamic-scan subtask — abnormal resources (Kepler/Prometheus).
+  description: Dynamic-scan subtask — abnormal resources on the sandbox serving pod.
   params:
   - name: image
     type: string
@@ -149,6 +217,12 @@ spec:
   - name: pipeline-run-name
     type: string
     default: ''
+  - name: sandbox-namespace
+    type: string
+    default: model-sandbox
+  - name: service-name
+    type: string
+    default: ''
   results:
   - name: result-file
     description: Path to abnormal-resources findings JSON
@@ -156,18 +230,40 @@ spec:
   - name: models
   - name: results
   steps:
+  - name: inspect
+    image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+    script: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      DIR="$(workspaces.results.path)/sandbox-inspect"
+      mkdir -p "${DIR}"
+      NS="$(params.sandbox-namespace)"
+      NAME="$(params.service-name)"
+      if [[ -z "${NAME}" ]]; then
+        echo '{"items":[]}' > "${DIR}/pods.json"
+        exit 0
+      fi
+      oc get pods -n "${NS}" -o json > "${DIR}/pods.json" || echo '{"items":[]}' > "${DIR}/pods.json"
+    onError: continue
   - name: scan
     image: $(params.image)
+    env:
+    - name: SANDBOX_INSPECT_DIR
+      value: $(workspaces.results.path)/sandbox-inspect
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
       trap 'echo $? > "$(workspaces.results.path)/.step-rc"' EXIT
       OUT="$(workspaces.results.path)/dynamic-abnormal-resources.json"
       SAMPLES="$(workspaces.models.path)/$(params.samples-file)"
+      NAME="$(params.service-name)"
+      if [[ -z "${NAME}" ]]; then
+        unset SANDBOX_INSPECT_DIR
+      fi
       if [[ -f "${SAMPLES}" ]]; then
         /scripts/run-abnormal-resources.sh "${OUT}" "${SAMPLES}"
       else
-        echo '[]' > "${OUT}"
+        /scripts/run-abnormal-resources.sh "${OUT}"
       fi
       echo -n "${OUT}" > "$(results.result-file.path)"
     onError: continue
@@ -202,7 +298,7 @@ metadata:
     app.kubernetes.io/part-of: ai-model-security-pipeline
     ai.security.pipeline/stage: dynamic-scan
 spec:
-  description: Dynamic-scan subtask — basic inference (vLLM + Fickling).
+  description: Dynamic-scan subtask — basic inference against the sandbox LLMInferenceService.
   params:
   - name: image
     type: string
@@ -216,6 +312,10 @@ spec:
   - name: pipeline-run-name
     type: string
     default: ''
+  - name: model-endpoint
+    type: string
+    default: ''
+    description: OpenAI-compatible base URL from serve-llm-start (empty for unit fixtures)
   results:
   - name: result-file
     description: Path to basic-inference findings JSON
@@ -225,6 +325,11 @@ spec:
   steps:
   - name: scan
     image: $(params.image)
+    env:
+    - name: MODEL_ENDPOINT
+      value: $(params.model-endpoint)
+    - name: MODEL_NAME
+      value: $(params.model-id)
     script: |
       #!/usr/bin/env bash
       set -euo pipefail

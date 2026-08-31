@@ -4,32 +4,66 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUT="${1:-/results/capability-anomaly-bias.json}"
 DELTA="${2:-}"
+export SCRIPT_DIR
 python3 - "${OUT}" "${DELTA}" <<'PY' | python3 "${SCRIPT_DIR}/emit_findings.py" --subtask anomaly-bias-detection --tool trulens --out "${OUT}"
 import json, os, sys
+sys.path.insert(0, os.environ.get("SCRIPT_DIR", "/scripts"))
 
 delta_path = sys.argv[2]
 regression_max = float(os.environ.get("QUALITY_REGRESSION_MAX", "0.10"))
 bias_max = float(os.environ.get("BIAS_SCORE_MAX", "0.20"))
 anomaly_max = float(os.environ.get("ANOMALY_RATE_MAX", "0.10"))
 findings = []
+endpoint = (os.environ.get("MODEL_ENDPOINT") or "").strip()
 
-candidates = [p for p in (delta_path, os.path.join(os.path.dirname(delta_path or ""), "baseline-delta.json")) if p]
-path = next((p for p in candidates if p and os.path.isfile(p)), None)
-if path is None:
-    # Fixture lives on unit ConfigMaps, not next to HF weights. Missing ≠ hard-gate fail.
-    print("[]")
-    raise SystemExit
-
-try:
-    data = json.loads(open(path).read() or "{}")
-except json.JSONDecodeError:
-    findings.append({
-        "issue": "baseline comparison file is not valid JSON",
-        "risk": "high",
-        "tool_used": "trulens",
-    })
-    print(json.dumps(findings))
-    raise SystemExit
+if endpoint:
+    import vllm_client
+    probes = [
+        "Reply with a one-word greeting.",
+        "What is 1+1? Reply with a number.",
+        "Complete this sentence: The sky is",
+    ]
+    texts = []
+    empty = 0
+    for prompt in probes:
+        result = vllm_client.chat(endpoint, prompt, max_tokens=32, timeout=120)
+        if not result.get("ok"):
+            findings.append({
+                "issue": f"llm endpoint unreachable: {result.get('error')}",
+                "risk": "critical",
+                "tool_used": "trulens",
+            })
+            print(json.dumps(findings))
+            raise SystemExit
+        text = str(result.get("text") or "").strip()
+        texts.append(text)
+        if not text:
+            empty += 1
+    unique = {t.lower() for t in texts if t}
+    repeated = 1.0 if texts and len(unique) == 1 else 0.0
+    anomaly = max(empty / max(len(probes), 1), repeated)
+    data = {"anomaly_rate": anomaly, "bias_score": 0.0}
+else:
+    candidates = [p for p in (delta_path, os.path.join(os.path.dirname(delta_path or ""), "baseline-delta.json")) if p]
+    path = next((p for p in candidates if p and os.path.isfile(p)), None)
+    if path is None:
+        findings.append({
+            "issue": "llm endpoint not provided",
+            "risk": "critical",
+            "tool_used": "trulens",
+        })
+        print(json.dumps(findings))
+        raise SystemExit
+    try:
+        data = json.loads(open(path).read() or "{}")
+    except json.JSONDecodeError:
+        findings.append({
+            "issue": "baseline comparison file is not valid JSON",
+            "risk": "high",
+            "tool_used": "trulens",
+        })
+        print(json.dumps(findings))
+        raise SystemExit
 
 if not isinstance(data, dict):
     data = {}

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 600" role="img" aria-label="OpenShift zone NetworkPolicy map">
+<rect x="0" y="0" width="1440" height="600" rx="0" fill="#F8F8F8" stroke="#F8F8F8" stroke-width="0"/>
+<defs><marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="#6A6E73"/></marker></defs>
+<text x="40" y="40" fill="#151515" font-size="18" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Zone isolation  |  NetworkPolicy default-deny</text>
+<text x="40" y="62" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Same-namespace, DNS, ClusterIP 172.30.0.0/16, internal registry, MinIO :9000 are common.</text>
+<rect x="40" y="90" width="200" height="70" rx="6" fill="#FFF5F5" stroke="#C9190B" stroke-width="1"/>
+<text x="52" y="112" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Internet / HF Hub</text>
+<text x="52" y="130" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">HTTPS :443</text>
+<rect x="40" y="180" width="200" height="70" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="52" y="202" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Quay / Cosign</text>
+<text x="52" y="220" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Scanner images, attestations</text>
+<rect x="280" y="90" width="280" height="280" rx="10" fill="#FFFFFF" stroke="#C9190B" stroke-width="2" stroke-dasharray="7 5"/>
+<text x="300" y="118" fill="#C9190B" font-size="15" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">model-ingress</text>
+<text x="300" y="138" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Untrusted intake</text>
+<rect x="300" y="156" width="240" height="56" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="312" y="178" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Fetch Job + Envoy</text>
+<text x="312" y="196" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">HF download allowed</text>
+<rect x="300" y="224" width="240" height="56" rx="6" fill="#FFF5F5" stroke="#C9190B" stroke-width="1"/>
+<text x="312" y="246" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Extra egress</text>
+<text x="312" y="264" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">0.0.0.0/0 :443</text>
+<text x="300" y="304" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">No eval-zone trust.</text>
+<rect x="590" y="90" width="320" height="280" rx="10" fill="#FFFFFF" stroke="#0066CC" stroke-width="2"/>
+<text x="610" y="118" fill="#0066CC" font-size="15" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">model-eval</text>
+<text x="610" y="138" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Pipeline sandbox</text>
+<rect x="610" y="156" width="280" height="56" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="622" y="178" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Tekton Tasks + score-gate</text>
+<text x="622" y="196" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">restricted SCC</text>
+<rect x="610" y="224" width="280" height="56" rx="6" fill="#E7F1FA" stroke="#0066CC" stroke-width="1"/>
+<text x="622" y="246" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Extra egress</text>
+<text x="622" y="264" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">ingress zone, Pipelines, MR, :443</text>
+<text x="610" y="304" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">No HF Hub (weights via MinIO).</text>
+<rect x="940" y="90" width="280" height="280" rx="10" fill="#FFFFFF" stroke="#3E8635" stroke-width="2" stroke-dasharray="7 5"/>
+<text x="960" y="118" fill="#3E8635" font-size="15" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">model-test</text>
+<text x="960" y="138" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">OpenShift AI serving</text>
+<rect x="960" y="156" width="240" height="56" rx="6" fill="#E9F7E6" stroke="#3E8635" stroke-width="1"/>
+<text x="972" y="178" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">KServe + vLLM</text>
+<text x="972" y="196" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">ingress from openshift-ingress</text>
+<rect x="960" y="224" width="240" height="56" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="972" y="246" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Extra egress</text>
+<text x="972" y="264" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">:443 (Quay). Not HF Hub.</text>
+<text x="960" y="304" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Only auto-pass models.</text>
+<rect x="1260" y="160" width="160" height="140" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="1272" y="182" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">model-prod</text>
+<text x="1272" y="200" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Later. Manual. Not a pipeline output.</text>
+<text x="40" y="400" fill="#151515" font-size="14" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Shared services (not a security zone)</text>
+<rect x="40" y="420" width="280" height="80" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="52" y="442" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">minio-system :9000</text>
+<text x="52" y="460" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">models-ingress, models-eval, models-verified, attestations</text>
+<rect x="340" y="420" width="260" height="80" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="352" y="442" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">build-image</text>
+<text x="352" y="460" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">BuildConfigs. No zone NetworkPolicy.</text>
+<rect x="620" y="420" width="280" height="80" rx="6" fill="#E7F1FA" stroke="#0066CC" stroke-width="1"/>
+<text x="632" y="442" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">rhoai-model-registries</text>
+<text x="632" y="460" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Eval publish POST :8080 / :8443</text>
+<rect x="920" y="420" width="280" height="80" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="932" y="442" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">openshift-dns / registry</text>
+<text x="932" y="460" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">All zones: DNS + image pull :443</text>
+<rect x="1220" y="420" width="200" height="80" rx="6" fill="#FFF5F5" stroke="#C9190B" stroke-width="1"/>
+<text x="1232" y="442" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Kata (target)</text>
+<text x="1232" y="460" fill="#6A6E73" font-size="11" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">dynamic-scan RuntimeClass later</text>
+<line x1="240" y1="125" x2="280" y2="200" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="560" y1="230" x2="590" y2="230" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="910" y1="230" x2="940" y2="230" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
+<text x="40" y="540" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Eval may reach ingress namespace (artifact sync). Test must not reach Hugging Face. Catch-all :443 ipBlocks are the Quay/TLS hole to pin later.</text>
+<text x="40" y="562" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Dynamic-scan pods: tighter intent (DNS only during probe). Today RUNTIME_CLASS=kata is env; podTemplate.runtimeClassName is not set.</text>
+</svg>

@@ -1,0 +1,19 @@
+{
+  "prompts": [
+    {
+      "benchmark": "mmlu",
+      "prompt": "The capital of France is Paris. Reply with yes or no: is that statement true?",
+      "expected": "yes"
+    },
+    {
+      "benchmark": "gsm8k",
+      "prompt": "What is 2 + 3? Reply with the number only.",
+      "expected": "5"
+    },
+    {
+      "benchmark": "humaneval",
+      "prompt": "Python: what does len('abc') return? Reply with the number only.",
+      "expected": "3"
+    }
+  ]
+}

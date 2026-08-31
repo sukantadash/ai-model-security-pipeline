@@ -1,0 +1,11 @@
+# Persistent sandbox zone. LLMInferenceService.yaml is applied by serve-llm-start
+# after patching name/uri — do not include it here (would deploy PLACEHOLDER).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: model-sandbox
+
+resources:
+  - namespace.yaml
+  - networkpolicy.yaml
+  - rbac.yaml

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: model-sandbox
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+    security.platform/zone: sandbox
+    opendatahub.io/dashboard: "true"
+    modelmesh-enabled: "false"
+  annotations:
+    openshift.io/display-name: "Model Security - Sandbox Serving"

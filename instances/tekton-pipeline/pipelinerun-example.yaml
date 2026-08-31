@@ -1,11 +1,12 @@
-# Example PipelineRun for RedHatAI/Qwen3-8B-FP8-dynamic — edit if model-id differs, then:
+# Example PipelineRun for RedHatAI/Qwen3-8B-FP8-dynamic — edit model-id if needed, then:
 #   oc create -f instances/tekton-pipeline/pipelinerun-example.yaml
 #
 # Prerequisites:
 #   - model-fetch Job completed (MinIO models-ingress/redhatai-qwen3-8b-fp8-dynamic/)
-#   - minio-s3 secret in model-eval
+#   - minio-s3 secret in model-eval and model-sandbox
+#   - oc apply -k instances/model-sandbox/ (namespace persists)
 #   - Scanner + publish images built (Phase 5)
-#   - Sandboxed Containers operator + RuntimeClass kata (Phase 1)
+#   - git-url reachable from model-eval (HTTPS)
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
@@ -22,8 +23,12 @@ spec:
       value: redhatai-qwen3-8b-fp8-dynamic
     - name: model-path
       value: /workspace/models
-    - name: model-registry-namespace
-      value: rhoai-model-registries
+    - name: git-url
+      value: https://github.com/sukantadash/ai-model-security-pipeline.git
+    - name: model-sandbox-path
+      value: instances/model-sandbox
+    - name: model-test-path
+      value: instances/model-test/llm-models
   workspaces:
     - name: shared-data
       persistentVolumeClaim:

@@ -1,4 +1,7 @@
-# Update hostname before applying overlay 13-gateway.
+# Replace REPLACE_WITH_CLUSTER_APPS_DOMAIN before overlay 13 (see script.sh Phase 12).
+#   APPS_DOMAIN=$(oc get ingresses.config/cluster -o jsonpath='{.spec.domain}')
+#   hostname: inference-gateway.${APPS_DOMAIN}
+# APPS_DOMAIN already includes the apps. prefix (e.g. apps.cluster.example.com).
 # model-test is the verified-model serving namespace after pipeline pass; do not add hf:// demo namespaces here.
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
@@ -19,7 +22,7 @@ spec:
                 operator: In
                 values:
                   - model-test
-      hostname: inference-gateway.apps.cluster-nqcv7.nqcv7.sandbox340.opentlc.com
+      hostname: inference-gateway.REPLACE_WITH_CLUSTER_APPS_DOMAIN
       name: https
       port: 443
       protocol: HTTPS
