@@ -1,6 +1,8 @@
 # Local secrets — use *.template files
 quay-secret.yaml
 minio-s3-secret.yaml
+instances/model-test/model-connection-secret.yaml
+instances/model-test/qwen3-8b-fp8-verified.yaml
 
 # Python
 __pycache__/

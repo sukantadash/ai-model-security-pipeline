@@ -265,15 +265,16 @@ if [[ ! -f minio-s3-secret.yaml ]]; then
 else
   MINIO_USER="$(awk -F': ' '/AWS_ACCESS_KEY_ID:/{print $2; exit}' minio-s3-secret.yaml | tr -d ' \"')"
   MINIO_PASS="$(awk -F': ' '/AWS_SECRET_ACCESS_KEY:/{print $2; exit}' minio-s3-secret.yaml | tr -d ' \"')"
+  cp instances/model-test/model-connection-secret.yaml.template instances/model-test/model-connection-secret.yaml
+
   sed -e "s/PLACEHOLDER/${MODEL_CONN_VERSION}/g" \
       -e "s/CHANGE_ME_MINIO_ROOT_USER/${MINIO_USER}/g" \
       -e "s/CHANGE_ME_MINIO_ROOT_PASSWORD/${MINIO_PASS}/g" \
-    instances/model-test/model-connection-secret.yaml.template \
-    | oc apply -f - -n "${NS_MODEL_TEST}"
+    instances/model-test/model-connection-secret.yaml.template > instances/model-test/model-connection-secret.yaml
 fi
+
 sed "s/PLACEHOLDER/${MODEL_CONN_VERSION}/g" \
-  instances/model-test/qwen3-8b-fp8-verified.yaml \
-  | oc apply -f - -n "${NS_MODEL_TEST}"
+  instances/model-test/qwen3-8b-fp8-verified.yaml.template > instances/model-test/qwen3-8b-fp8-verified.yaml
 
 oc apply -k ./overlays/16-test-serving/ -n "${NS_MODEL_TEST}"
 oc get llminferenceservice -n "${NS_MODEL_TEST}"
