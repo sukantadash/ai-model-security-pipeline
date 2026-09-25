@@ -1,6 +1,5 @@
-# Phase 16: Argo CD Application for GitOps promotion to model-test.
-# Promotion to model-prod is a later manual process.
-# Prerequisites: OpenShift GitOps operator (Phase 1), repo URL configured.
+# Phase 16: App-of-Apps root (ai-model-security-platform) → instances/gitops/apps.
+# Prerequisites: OpenShift GitOps Ready; prefer ./gitops-scripts.sh for post-sync.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 

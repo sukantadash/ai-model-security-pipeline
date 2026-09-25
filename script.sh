@@ -2,6 +2,11 @@
 # Design: README.md, docs/architecture.md, docs/pipeline.md, IMPLEMENTATION-PLAN.md
 # Overlays: overlays/00-gpu-operators … 17-gitops
 #
+# GitOps path (App-of-Apps + post-sync runbook): gitops-scripts.sh
+#   Single apply: oc apply -k ./instances/gitops/  (or overlays/17-gitops)
+#   Requires OpenShift GitOps already installed. See instances/gitops/README.md.
+#   Copy/paste phases in gitops-scripts.sh (do not run bash end-to-end).
+#
 # Prerequisites:
 #   oc login ...
 #   GPU nodes: infra/prereqs/ocp-gpu-setup/README.md
@@ -94,9 +99,8 @@ oc rollout status deployment/minio -n "${NS_MINIO}" --timeout=300s
 oc wait --for=condition=Available deployment/minio -n "${NS_MINIO}" --timeout=600s
 oc wait --for=condition=complete job/minio-bucket-init -n "${NS_MINIO}" --timeout=300s
 oc get route minio-api minio-console -n "${NS_MINIO}"
-# Overlay 05 creates eval-workspace in model-eval. Ingress/test PVCs are per-zone:
-oc apply -f ./instances/storage/ingress-models-pvc.yaml -n "${NS_MODEL_INGRESS}"
-oc apply -f ./instances/storage/verified-models-pvc.yaml -n "${NS_MODEL_TEST}"
+# Overlay 05 creates eval-workspace in model-eval.
+# ingress-models PVC: instances/model-ingress; verified-models PVC: instances/model-test-ns (overlay 04).
 # Restore the committed placeholder if you edited instances/minio/secret.yaml:
 #   git checkout -- instances/minio/secret.yaml
 
@@ -288,12 +292,15 @@ curl -sS "https://${GATEWAY_HOST}/${NS_MODEL_TEST}/qwen3-8b-fp8/v1/models" \
   -H "Authorization: Bearer ${TOKEN}" | jq .
 
 # =============================================================================
-# Phase 16: GitOps promotion to model-test
-# Overlay: 17-gitops  Promotion to model-prod is a later manual process.
+# Phase 16: GitOps App-of-Apps (platform overlays + model-test promotion)
+# Overlay: 17-gitops  Prefer step-by-step: gitops-scripts.sh
+# Promotion to model-prod is a later manual process.
 # =============================================================================
-# Edit instances/gitops/application-model-test.yaml spec.source.repoURL / targetRevision.
+# Edit instances/gitops/application-root.yaml and apps/*.yaml repoURL / targetRevision.
 oc apply -k ./overlays/17-gitops/
-oc get application model-test-verified-models -n openshift-gitops
+oc get application ai-model-security-platform -n openshift-gitops
+oc get applications -n openshift-gitops -l app.kubernetes.io/part-of=ai-model-security-pipeline
+# Continue post-sync phases in gitops-scripts.sh (secrets, builds, overlay 16, …).
 
 # =============================================================================
 # Cleanup (reverse order) — uncomment only when tearing down

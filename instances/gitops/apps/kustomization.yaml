@@ -1,0 +1,24 @@
+# Child Applications for ai-model-security-platform App-of-Apps.
+# Order is enforced by argocd.argoproj.io/sync-wave annotations (see script.sh phases).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - 00-gpu-operators.yaml
+  - 01-gpu-instances.yaml
+  - 02-operators.yaml
+  - model-ingress.yaml
+  - 04-zones.yaml
+  - 03-operator-instances.yaml
+  - 05-storage.yaml
+  - 06-builds.yaml
+  - 07-tekton-tasks.yaml
+  - 08-tekton-pipeline.yaml
+  - 09-tekton-triggers.yaml
+  - 10-tekton-chains.yaml
+  - 11-rhoai.yaml
+  - 12-rhoai-dashboard.yaml
+  - 13-gateway.yaml
+  - 14-authorino.yaml
+  - 15-hardware-profile.yaml
+  - application-model-test.yaml

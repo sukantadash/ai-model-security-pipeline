@@ -1,14 +1,17 @@
-# Overlay 17 — GitOps promotion to model-test
+# Overlay 17 — GitOps App-of-Apps
 
-Registers an Argo CD `Application` that watches verified model manifests in Git and syncs them to `model-test`.
-Promotion to `model-prod` is manual and is not handled here.
+Applies the root Argo CD Application `ai-model-security-platform`, which syncs all child Applications under `instances/gitops/apps/` (script.sh overlays 00–15 + model-ingress + model-test promotion).
+
+OpenShift GitOps must already be installed. Follow step-by-step phases in `gitops-scripts.sh` (copy/paste like `script.sh`):
 
 ```bash
-# Edit instances/gitops/application-model-test.yaml first (repoURL)
+# Phase 0 from gitops-scripts.sh
 oc apply -k ./overlays/17-gitops/
 
-oc get application model-test-verified-models -n openshift-gitops
-oc describe application model-test-verified-models -n openshift-gitops
+oc get application ai-model-security-platform -n openshift-gitops
+oc get applications -n openshift-gitops -l app.kubernetes.io/part-of=ai-model-security-pipeline
 ```
 
-After a pipeline pass, commit the updated `model-registry://` URI and version to `instances/model-test/qwen3-8b-fp8-verified.yaml` — Argo CD promotes it to `model-test` automatically.
+`overlays/16-test-serving` is **not** an Argo app (gitignored generated files); apply it in `gitops-scripts.sh` Phase 5 after secrets/builds.
+
+After a pipeline pass, commit the updated verified LLMInferenceService under `instances/model-test/` — the `model-test-verified-models` child Application promotes it to `model-test`.

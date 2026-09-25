@@ -1,0 +1,28 @@
+# Sync wave 0 — NFD + NVIDIA GPU Operator subscriptions (script.sh Phase 0).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ai-sec-00-gpu-operators
+  namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io/argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/sukantadash/ai-model-security-pipeline.git
+    targetRevision: main
+    path: overlays/00-gpu-operators
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: openshift-nfd
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - SkipDryRunOnMissingResource=true
+    automated:
+      prune: true
+      selfHeal: true

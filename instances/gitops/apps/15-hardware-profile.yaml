@@ -1,0 +1,28 @@
+# Sync wave 15 — GPU hardware profile (script.sh Phase 14).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ai-sec-15-hardware-profile
+  namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+  annotations:
+    argocd.argoproj.io/sync-wave: "15"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io/argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/sukantadash/ai-model-security-pipeline.git
+    targetRevision: main
+    path: overlays/15-hardware-profile
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: redhat-ods-applications
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=false
+      - SkipDryRunOnMissingResource=true
+    automated:
+      prune: true
+      selfHeal: true

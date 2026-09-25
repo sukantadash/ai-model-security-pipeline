@@ -1,0 +1,28 @@
+# Sync wave 7 — Tekton Tasks in model-eval (script.sh Phase 6).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ai-sec-07-tekton-tasks
+  namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io/argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/sukantadash/ai-model-security-pipeline.git
+    targetRevision: main
+    path: overlays/07-tekton-tasks
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: model-eval
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=false
+      - SkipDryRunOnMissingResource=true
+    automated:
+      prune: true
+      selfHeal: true

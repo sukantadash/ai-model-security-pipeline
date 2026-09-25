@@ -1,6 +1,11 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+# Explicit namespace so PVC/NetworkPolicy land in model-ingress under Argo
+# (ai-sec-model-ingress) without relying on oc -n.
+namespace: model-ingress
+
 resources:
   - namespace.yaml
   - networkpolicy.yaml
+  - ingress-models-pvc.yaml

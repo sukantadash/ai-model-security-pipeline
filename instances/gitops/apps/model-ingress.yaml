@@ -1,0 +1,28 @@
+# Sync wave 3 — model-ingress namespace + NetworkPolicy (script.sh Phase 2).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ai-sec-model-ingress
+  namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io/argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/sukantadash/ai-model-security-pipeline.git
+    targetRevision: main
+    path: instances/model-ingress
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: model-ingress
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - SkipDryRunOnMissingResource=true
+    automated:
+      prune: true
+      selfHeal: true

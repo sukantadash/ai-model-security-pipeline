@@ -1,0 +1,33 @@
+# Sync wave 16 — Argo CD Application for verified model promotion to model-test.
+# Promotion to model-prod is manual and is not handled by this Application.
+# Edit spec.source.repoURL to your fork before applying the App-of-Apps root.
+# Requires qwen3-8b-fp8-verified.yaml committed (or generated then pushed) under instances/model-test.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: model-test-verified-models
+  namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+  annotations:
+    argocd.argoproj.io/sync-wave: "16"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io/argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/sukantadash/ai-model-security-pipeline.git
+    targetRevision: main
+    path: instances/model-test
+    directory:
+      include: qwen3-8b-fp8-verified.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: model-test
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=false
+      - SkipDryRunOnMissingResource=true
+    automated:
+      prune: true
+      selfHeal: true

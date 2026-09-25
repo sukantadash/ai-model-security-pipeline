@@ -1,6 +1,10 @@
-# model-test namespace only (overlay 04-zones). Canonical copy: instances/model-test/namespace.yaml
+# model-test namespace + verified-models PVC (overlay 04-zones).
+# Canonical namespace copy: instances/model-test/namespace.yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+namespace: model-test
+
 resources:
   - namespace.yaml
+  - verified-models-pvc.yaml
