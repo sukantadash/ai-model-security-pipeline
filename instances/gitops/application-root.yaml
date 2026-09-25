@@ -15,7 +15,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/sukantadash/ai-model-security-pipeline.git
-    targetRevision: main
+    targetRevision: zqlk8.sandbox425.opentlc.com
     path: instances/gitops/apps
   destination:
     server: https://kubernetes.default.svc

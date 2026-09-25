@@ -17,7 +17,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/sukantadash/ai-model-security-pipeline.git
-    targetRevision: main
+    targetRevision: zqlk8.sandbox425.opentlc.com
     path: instances/model-test
     directory:
       include: qwen3-8b-fp8-verified.yaml
