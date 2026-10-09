@@ -28,7 +28,7 @@ spec:
     - name: quay-auth
       secret:
         secretName: sudash-modelpipeline-pull-secret
-        optional: true
+        optional: false
         items:
           - key: .dockerconfigjson
             path: config.json
@@ -54,22 +54,27 @@ spec:
         set -euo pipefail
         DEST="$(workspaces.models.path)"
         IMG="${MODELCAR_IMAGE}:${MODEL_ID}-unverified"
-        rm -rf "${DEST:?}"/*
         mkdir -p "${DEST}"
-        echo "Extracting /models from ${IMG}"
-        oc image extract "${IMG}" --path /models/:${DEST}/ --confirm
-        if [[ -z "$(ls -A "${DEST}" 2>/dev/null || true)" ]]; then
-          # Some extract layouts nest under models/
-          if [[ -d "${DEST}/models" ]] && [[ -n "$(ls -A "${DEST}/models" 2>/dev/null || true)" ]]; then
-            shopt -s dotglob
-            mv "${DEST}/models"/* "${DEST}/"
-            rmdir "${DEST}/models" 2>/dev/null || true
-          fi
+        # Clear previous weights without failing on an empty dir (set -e + glob).
+        find "${DEST}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+        echo "Extracting /models from ${IMG} -> ${DEST}"
+        df -h "${DEST}" || true
+        if ! oc image extract "${IMG}" --path "/models/:${DEST}/" --confirm; then
+          echo "oc image extract failed for ${IMG}" >&2
+          ls -la /run/secrets/quay >&2 || true
+          exit 1
         fi
-        if [[ ! -d "${DEST}" ]] || [[ -z "$(ls -A "${DEST}" 2>/dev/null || true)" ]]; then
+        if [[ -d "${DEST}/models" ]] && [[ -n "$(ls -A "${DEST}/models" 2>/dev/null || true)" ]]; then
+          shopt -s dotglob nullglob
+          mv "${DEST}/models"/* "${DEST}/"
+          rmdir "${DEST}/models" 2>/dev/null || true
+        fi
+        COUNT="$(find "${DEST}" -type f ! -path '*/.cache/*' | wc -l | tr -d ' ')"
+        if [[ "${COUNT}" -lt 1 ]]; then
           echo "no model files after extract from ${IMG}" >&2
           ls -la "${DEST}" >&2 || true
           exit 1
         fi
+        du -sh "${DEST}" || true
         echo -n "${DEST}" > "$(results.model-path.path)"
-        echo "extracted $(params.model-id) to ${DEST}"
+        echo "extracted $(params.model-id) (${COUNT} files) to ${DEST}"
