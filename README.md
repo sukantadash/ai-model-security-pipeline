@@ -5,6 +5,8 @@
 **Source:** LLM Security Repositories Evaluation  
 **Last updated:** August 27, 2026
 
+**Deploying?** Run **`./deploy.sh`** (interactive installer for a new cluster) or follow **[Steps to Deploy](Deployment_Steps.md)** (GitOps install, ModelCar, NeMo Guardrails, and tests). To compare Qwen3, Granite 4.1 and Llama 3.1: `./deploy.sh --compare` (section 5.6).
+
 Design docs and diagrams (architecture, pipeline DAG, scoring, zones, storage, DemoJam) live in **[docs/](docs/)**. Per-subtask **tool tables** (what each scanner does in code) live in **[docs/detailed-design.md](docs/detailed-design.md)**. This README lists task and subtask names only.
 
 ---
@@ -117,7 +119,7 @@ Fetch Artifact → Static Scanning → Dynamic Scan → Capability Eval → Adve
 | **Static Security Scanning** | Inspect serialization without execution | Magika, ModelAudit, Fickling, ModelScan, ClamAV, Syft, Grype | Parallel Tasks → results aggregation Task |
 | **Dynamic Scan** | Load model in isolated VM runtime | Kata, Falco/Tetragon, Kepler, vLLM | Four parallel Tasks + merge Task |
 | **Capability Evaluation** | Benchmark quality, performance/cost, stability, and anomaly/bias | HTTP to eval `LLMInferenceService` (lm-eval-harness later) | Four parallel Tasks + merge Task |
-| **Adversarial Test** | Adversarial probing and guardrails | HTTP probes (Garak / Promptfoo / LLM Guard later) | Three parallel Tasks + merge Task |
+| **Adversarial Test** | Adversarial probing and guardrails | HTTP probes (Garak / Promptfoo / LLM Guard later), NVIDIA NeMo Guardrails (TrustyAI) | Four parallel Tasks + merge Task |
 
 Pipeline runs clone `git-url`, patch `LLMInferenceService.yaml` under `model-sandbox-path`, and apply it in **`model-sandbox`**. Later stages use `model-endpoint`. Isolation probes inspect that serving pod. `serve-llm-stop` deletes the sandbox CR (namespace stays). Auto-pass and review patch `model-test-path` to `s3://models-verified/` and apply in `model-test`.
 
@@ -160,7 +162,9 @@ fetch-artifact ──► malware              ──┐
                ──► license-compliance   ──┘                                 ├──► behavior             ──┤
                                                                             ├──► abnormal-resources   ──┼──► dynamic-scan-merge ──► quality … ──► adversarial … ──► score-gate ──► publish-artifact
                                                                             └──► basic-inference      ──┘
-finally: serve-llm-stop, archive-results
+dynamic-scan ──► nemo-guardrails-start (NeMo in model-sandbox) ──► nemo-guardrails (adversarial subtask)
+publish-artifact ──► nemo-guardrails-test (NeMo in model-test)
+finally: nemo-guardrails-stop, serve-llm-stop, archive-results
 ```
 
 #### Capability Evaluation (Stage 3)
@@ -175,15 +179,20 @@ Four Tasks run **in parallel** after `dynamic-scan`, then `capability-eval-merge
 | 4 | `anomaly-bias-detection` | `capability-eval-anomaly-bias` | `capability-anomaly-bias.json` |
 | merge | `capability-eval` | `capability-eval-merge` | `capability.json` |
 
+#### NeMo Guardrails (`nemo-guardrails-start` / `nemo-guardrails-test`)
+
+After `dynamic-scan`, `nemo-guardrails-start` deploys a TrustyAI `NemoGuardrails` CR in `model-sandbox` in front of the eval vLLM (RHOAI 3.2 Technology Preview, *Enabling AI safety with Guardrails* ch. 3). The adversarial subtask `nemo-guardrails` probes it. After a publish, `nemo-guardrails-test` deploys the same rails with auth enabled in front of the verified model in `model-test`. `nemo-guardrails-stop` (finally) deletes the sandbox CR. Toggle with `nemo-guardrails-enabled`. Details: **[docs/nemo-guardrails.md](docs/nemo-guardrails.md)**.
+
 #### Adversarial Test (Stage 4)
 
-Three Tasks run **in parallel** after `capability-eval`, then `adversarial-test-merge`.
+Four Tasks run **in parallel** after `capability-eval`, then `adversarial-test-merge`.
 
 | Subtask | Pipeline task | Tekton Task | Scan object |
 |---------|---------------|-------------|-------------|
 | 1 | `prompt-injection` | `adversarial-test-prompt-injection` | `adversarial-prompt-injection.json` |
 | 2 | `jailbreak-guardrail-bypass` | `adversarial-test-jailbreak-guardrail-bypass` | `adversarial-jailbreak-guardrail-bypass.json` |
 | 3 | `harmful-content-bias` | `adversarial-test-harmful-content-bias` | `adversarial-harmful-content-bias.json` |
+| 4 | `nemo-guardrails` | `adversarial-test-nemo-guardrails` | `adversarial-nemo-guardrails.json` |
 | merge | `adversarial-test` | `adversarial-test-merge` | `adversarial-test.json` |
 
 #### Score gate
@@ -206,7 +215,7 @@ Finding schema, penalty tables, and `policy.json` behavior: [docs/detailed-desig
 
 #### Publish artifact
 
-Runs when score-gate routing is `auto-pass` or `review`. Promotes weights to `models-verified` and registers the model. Reject does not publish.
+Runs when score-gate routing is `auto-pass` or `review`. Promotes weights to `models-verified` and registers the model. Reject does not publish. `nemo-guardrails-test` then puts NeMo Guardrails in front of the verified model.
 
 #### Archive results
 
@@ -281,6 +290,8 @@ model-ingress  →  model-eval  →  model-test
 | `tektoncd/chains` | Tekton Chains supply chain attestation |
 | `promptfoo/modelaudit` | Primary static inspection engine |
 | `trailofbits/fickling` | Pickle bytecode decompiler and allowlist hooks |
+| `NVIDIA/NeMo-Guardrails` | Programmable input/output rails (TrustyAI `NemoGuardrails` CR in RHOAI) |
+| Red Hat OpenShift AI 3.2 — *Enabling AI safety with Guardrails* | Chapter 3: deploying NeMo Guardrails |
 | `kata-containers/kata-containers` | VM-level sandbox isolation |
 | `sigstore/cosign` | Container and artifact signing |
 
@@ -290,6 +301,7 @@ model-ingress  →  model-eval  →  model-test
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.3 | 2026-10-06 | — | Add NeMo Guardrails: sandbox guardrails + `nemo-guardrails` adversarial subtask, guarded serving in `model-test` |
 | 1.2 | 2026-08-27 | — | Move tool tables to [docs/detailed-design.md](docs/detailed-design.md); README keeps task/subtask names |
 | 1.1 | 2026-08-27 | — | Document every pipeline Task/subtask with tool tables; move shared finding schema to score-gate |
 | 1.0 | 2026-08-20 | — | Initial high-level design based on LLM Security Repositories Evaluation |

@@ -6,8 +6,9 @@ metadata:
     app.kubernetes.io/part-of: ai-model-security-pipeline
 spec:
   description: >
-    Write manifest.json into s3://models-eval/<model-id>/<version>/scan-result/.
-    Subtasks already upload their JSON to that prefix.
+    Write manifest.json into s3://models-eval/<model-id>/<version>/scan-result/
+    (subtasks already upload their JSON to that prefix), then log the run to MLflow
+    (one MLflow run per PipelineRun; never fails the task).
   params:
     - name: image
       type: string
@@ -16,6 +17,22 @@ spec:
       type: string
     - name: pipeline-run-name
       type: string
+    - name: mlflow-tracking-uri
+      type: string
+      default: ''
+      description: MLflow tracking server URL incl. static prefix (…svc:8443/mlflow); empty = do not log to MLflow
+    - name: mlflow-experiment
+      type: string
+      default: ai-model-security-pipeline
+    - name: modelcar-image
+      type: string
+      default: ''
+    - name: git-url
+      type: string
+      default: ''
+    - name: git-revision
+      type: string
+      default: ''
   results:
     - name: scan-uri
     - name: model-version
@@ -57,3 +74,46 @@ spec:
         echo -n "${VERSION}" > "$(results.model-version.path)"
         echo -n "${URI}" > "$(results.scan-uri.path)"
         echo "Scan pack ${URI}"
+    - name: log-mlflow
+      image: $(params.image)
+      onError: continue
+      envFrom:
+        - secretRef:
+            name: minio-s3
+      env:
+        - name: MLFLOW_TRACKING_URI
+          value: $(params.mlflow-tracking-uri)
+        - name: MLFLOW_EXPERIMENT
+          value: $(params.mlflow-experiment)
+        # SA token + namespace → Authorization + X-MLFLOW-WORKSPACE (workspace model-eval)
+        - name: MLFLOW_TRACKING_AUTH
+          value: kubernetes-namespaced
+        # In-cluster MLflow uses an OpenShift service-CA certificate
+        - name: REQUESTS_CA_BUNDLE
+          value: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+        - name: MLFLOW_HTTP_REQUEST_MAX_RETRIES
+          value: "2"
+        - name: MLFLOW_HTTP_REQUEST_TIMEOUT
+          value: "30"
+        - name: MODEL_ID
+          value: $(params.model-id)
+        - name: MODELCAR_IMAGE
+          value: $(params.modelcar-image)
+        - name: GIT_URL
+          value: $(params.git-url)
+        - name: GIT_REVISION
+          value: $(params.git-revision)
+      script: |
+        #!/usr/bin/env bash
+        set -uo pipefail
+        if [[ -z "${MLFLOW_TRACKING_URI}" ]]; then
+          echo "mlflow-tracking-uri not set; skipping MLflow logging"; exit 0
+        fi
+        source /scripts/s3-common.sh
+        PR="$(params.pipeline-run-name)"
+        if [[ -z "${PR}" ]]; then PR="$(context.taskRun.name)"; fi
+        export PIPELINE_RUN="${PR}"
+        export VERSION="$(model_version_from_run "${PR}")"
+        export RESULTS_DIR=/tmp/scan-result
+        s3_fetch_scan_prefix "${MODEL_ID}" "${VERSION}" "${RESULTS_DIR}" >/dev/null || true
+        python3 /scripts/log_mlflow.py || true

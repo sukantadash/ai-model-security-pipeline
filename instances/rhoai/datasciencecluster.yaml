@@ -1,40 +1,67 @@
-apiVersion: datasciencecluster.opendatahub.io/v1
+# DataScienceCluster for RHOAI 3.5 (operator channel stable-3.x), v2 API.
+# Copied from the live cluster spec (oc get datasciencecluster default-dsc -o json) so Argo CD
+# applies exactly what the cluster stores. The previous v1 manifest could not express
+# v2-only components such as mlflowoperator and kept ai-sec-11-rhoai permanently OutOfSync.
+#
+# mlflowoperator: Managed — MLflow experiment tracking (instances/mlflow); the pipeline
+# logs every PipelineRun as an MLflow run (archive-results, step log-mlflow).
+apiVersion: datasciencecluster.opendatahub.io/v2
 kind: DataScienceCluster
 metadata:
   name: default-dsc
 spec:
   components:
-    dashboard:
-      managementState: Managed
-    kserve:
-      managementState: Managed
-      serving:
-        name: knative-serving
-        managementState: Managed
-    distributedworkloads:
-      managementState: Managed
-    trainingoperator:
-      managementState: Managed
-    modelmeshserving:
+    aigateway:
       managementState: Removed
-    datasciencepipelines:
-      managementState: Managed
-    trustyai:
-      managementState: Managed
-    codeflare:
-      managementState: Removed
-    ray:
-      managementState: Managed
+      batchGateway: {}
+      modelsAsAService:
+        managementState: Removed
     aipipelines:
+      managementState: Managed
+    dashboard:
       managementState: Managed
     feastoperator:
       managementState: Managed
-    llamastackoperator:
+    kserve:
       managementState: Managed
+      modelsAsService:
+        managementState: Removed
+      nim:
+        airGapped: false
+        managementState: Managed
+      rawDeploymentServiceConfig: Headless
+      wva:
+        managementState: Removed
     kueue:
       managementState: Removed
+      autoCreateQueues: false
+      defaultClusterQueueName: default
+      defaultLocalQueueName: default
+    llamastackoperator:
+      managementState: Managed
+    mcplifecycleoperator: {}
+    mlflowoperator:
+      managementState: Managed
     modelregistry:
       managementState: Managed
       registriesNamespace: rhoai-model-registries
+    ogx:
+      managementState: Removed
+    ray:
+      managementState: Managed
+    sparkoperator:
+      managementState: Removed
+    trainer:
+      managementState: Removed
+    trainingoperator:
+      managementState: Managed
+    trustyai:
+      managementState: Managed
+      mcpGuardrailsMode: false
+      eval:
+        lmeval:
+          permitCodeExecution: deny
+          permitOnline: deny
     workbenches:
       managementState: Managed
+      workbenchNamespace: rhods-notebooks

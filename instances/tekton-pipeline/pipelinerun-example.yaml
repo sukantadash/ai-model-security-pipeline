@@ -7,7 +7,8 @@
 #     (pushed quay.io/sudash/ai-model-security-pipeline:<model-id>-unverified)
 #   - Quay pull secret in model-eval + model-sandbox + model-test
 #   - oc apply -k instances/model-sandbox/ (namespace persists)
-#   - Scanner + publish images built; rebuild publish after ModelCar changes
+#   - Scanner + publish images built (Phase 3); rebuild publish after ModelCar changes
+#   - TrustyAI NemoGuardrails CRD present (trustyai: Managed) unless nemo-guardrails-enabled=false
 #   - git-url reachable from model-eval (HTTPS)
 #   - modelcar-image must match Job MODELCAR_IMAGE (shared repo)
 apiVersion: tekton.dev/v1
@@ -29,13 +30,16 @@ spec:
     - name: model-path
       value: /workspace/models
     - name: git-url
-      value: https://github.com/sukantadash/ai-model-security-pipeline.git
+      value: https://github.com/arckrish/ai-model-security-pipeline.git
     - name: git-revision
       value: cluster-install
     - name: model-sandbox-path
       value: instances/model-sandbox/LLMInferenceService.yaml
     - name: serving-yaml
       value: instances/model-test/qwen3-8b-fp8-verified.yaml
+    # NeMo Guardrails (TrustyAI, Tech Preview): sandbox probes + guarded model-test serving
+    - name: nemo-guardrails-enabled
+      value: 'true'
   workspaces:
     - name: shared-data
       persistentVolumeClaim:

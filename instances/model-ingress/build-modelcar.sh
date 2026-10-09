@@ -41,6 +41,12 @@ build_args=(
 if [[ -n "${HF_TOKEN:-}" ]]; then
   build_args+=(--build-arg "HF_TOKEN=${HF_TOKEN}")
 fi
+# Optional extra download patterns (comma-separated, e.g. "*.jinja" for models whose
+# chat template is a separate chat_template.jinja). Unset = default patterns only.
+if [[ -n "${HF_EXTRA_PATTERNS:-}" ]]; then
+  build_args+=(--build-arg "HF_EXTRA_PATTERNS=${HF_EXTRA_PATTERNS}")
+  echo "Extra download patterns: ${HF_EXTRA_PATTERNS}"
+fi
 build_args+=("${CONTEXT_DIR}")
 
 buildah "${build_args[@]}"

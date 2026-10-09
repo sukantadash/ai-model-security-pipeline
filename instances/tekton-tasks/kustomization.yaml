@@ -15,6 +15,7 @@ resources:
   - fetch-artifact.yaml
   - static-scan.yaml
   - serve-llm.yaml
+  - nemo-guardrails.yaml
   - dynamic-scan.yaml
   - capability-eval.yaml
   - adversarial-test.yaml

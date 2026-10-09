@@ -9,3 +9,5 @@ resources:
   - networkpolicy.yaml
   - networkpolicy-router-apiserver.yaml
   - llmis-config-redhatai-qwen3-8b-fp8-dynamic.yaml
+  - llmis-config-redhatai-granite-4-1-8b-fp8.yaml
+  - llmis-config-redhatai-llama-3-1-8b-instruct-fp8.yaml

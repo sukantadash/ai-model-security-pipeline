@@ -1,4 +1,4 @@
-# Build ModelCar from Hugging Face and push :unverified (no MinIO weight upload).
+# Build ModelCar from Hugging Face and push ${MODELCAR_IMAGE}:${MODEL_ID}-unverified (no MinIO weight upload).
 #
 # Prerequisites (synced by Argo ai-sec-model-ingress / instances/model-ingress):
 #   - ServiceAccount model-fetch + ConfigMap modelcar-build (Containerfile)

@@ -1,8 +1,9 @@
-# Phase 11: dashboard + ModelRegistry — apply after DSC is Ready (overlay 11).
-# ModelRegistry CRD and rhoai-model-registries namespace come from the DSC.
+# Phase 11: dashboard + ModelRegistry + MLflow — apply after DSC is Ready (overlay 11).
+# ModelRegistry / MLflow CRDs and rhoai-model-registries namespace come from the DSC.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
   - ../../instances/rhoai-dashboard
   - ../../instances/model-registry
+  - ../../instances/mlflow

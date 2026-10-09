@@ -1,0 +1,15 @@
+# Lets the pipeline log runs to MLflow workspace model-eval (RHOAI 3.5 "Working with MLflow",
+# §2.3: mlflow-integration ClusterRole for service accounts doing automated tracking).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: model-eval-pipeline-mlflow
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: mlflow-operator-mlflow-integration
+subjects:
+  - kind: ServiceAccount
+    name: model-eval-pipeline

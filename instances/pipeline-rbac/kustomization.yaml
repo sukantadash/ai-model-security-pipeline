@@ -10,3 +10,4 @@ resources:
   - scc-rolebinding.yaml
   - triggers-eventlistener-rolebinding.yaml
   - triggers-eventlistener-clusterrolebinding.yaml
+  - mlflow-rolebinding.yaml

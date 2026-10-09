@@ -1,4 +1,4 @@
-# model-test namespace + verified-models PVC (overlay 04-zones).
+# model-test namespace + verified-models PVC + pipeline/NeMo/test-user RBAC + NeMo NetworkPolicy (overlay 04-zones).
 # Canonical namespace copy: instances/model-test/namespace.yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
@@ -8,4 +8,9 @@ namespace: model-test
 resources:
   - namespace.yaml
   - verified-models-pvc.yaml
-  - pipeline-apply-rbac.yaml 
+  - pipeline-apply-rbac.yaml
+  # NeMo Guardrails SA + view RoleBinding + API token Secret (used by nemo-guardrails-test)
+  - nemo-guardrails-serviceaccount.yaml
+  - networkpolicy-nemo-guardrails-apiserver.yaml
+  # test-user + read roles for gateway / NeMo Guardrails smoke tests
+  - serving-rbac.yaml

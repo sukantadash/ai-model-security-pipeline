@@ -18,6 +18,7 @@
 | Verified weights | Quay `…:<model-id>-verified-<score>-<version>` | OCI | Publish retag on auto-pass or review |
 | Attestations | MinIO `attestations/` | S3 | Tekton Chains target |
 | Serving pointer | RHOAI Model Registry | `rhoai-model-registries` | `storage_uri` = `oci://…` |
+| Run history | MLflow (experiment `ai-model-security-pipeline`, workspace `model-eval`) | server in `redhat-ods-applications` | Metadata: SQLite on PVC; artifacts: MinIO bucket `mlflow`. One run per PipelineRun |
 
 Buckets `models-ingress` / `models-verified` may still exist from older installs; the pipeline no longer writes weights there.
 
@@ -42,9 +43,10 @@ oci://quay.io/sudash/ai-model-security-pipeline:<model-id>-verified-87-9x57m
 | Capability merge | `capability.json` |
 | Adversarial subtasks | `adversarial-prompt-injection.json`, `adversarial-jailbreak-guardrail-bypass.json`, `adversarial-harmful-content-bias.json` |
 | Adversarial merge | `adversarial-test.json` |
+| NeMo Guardrails subtask (live) | `nemo-guardrails-summary.json` — probe counts (attacks blocked, false positives, errors, thinking replies); read by MLflow logging and `tools/compare_models.py`, ignored by score-gate |
 | Score gate | `score.json` |
 | Publish | `publish.json` |
-| Archive (`finally`) | `manifest.json` |
+| Archive (`finally`) | `manifest.json` (then the same files are logged to MLflow as artifacts) |
 
 ## Hugging Face → ModelCar
 

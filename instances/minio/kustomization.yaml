@@ -11,3 +11,4 @@ resources:
   - route-api.yaml
   - route-console.yaml
   - bucket-init-job.yaml
+  - bucket-init-mlflow-job.yaml

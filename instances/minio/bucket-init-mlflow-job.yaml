@@ -1,0 +1,33 @@
+# Creates the MLflow artifact bucket (instances/mlflow). A separate Job because Jobs are immutable:
+# changing minio-bucket-init would make Argo CD sync fail on clusters where it already ran.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-bucket-init-mlflow
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mc
+          # quay.io/minio/mc no longer allows anonymous pulls — use pgsty/mc.
+          image: docker.io/pgsty/mc:RELEASE.2026-09-16T00-00-00Z
+          env:
+            # OpenShift runs with random UID — /.mc is not writable.
+            - name: MC_CONFIG_DIR
+              value: /tmp/.mc
+          envFrom:
+            - secretRef:
+                name: minio-root
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -euo pipefail
+              mc alias set local http://minio.minio-system.svc:9000 "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"
+              mc mb --ignore-existing local/mlflow
+              mc anonymous set none local/mlflow
+              mc ls local

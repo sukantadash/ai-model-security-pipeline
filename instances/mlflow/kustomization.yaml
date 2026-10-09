@@ -1,0 +1,7 @@
+# MLflow tracking server (cluster-scoped MLflow CR). Applied with overlay 12 (after the DSC is Ready,
+# so the MLflow CRD from mlflowoperator exists).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - mlflow.yaml

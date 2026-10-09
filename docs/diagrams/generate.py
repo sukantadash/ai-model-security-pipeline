@@ -127,9 +127,10 @@ def architecture_overview() -> str:
     parts.append(T(44, 154, "Untrusted. No trust assumed.", 11, MUTED))
     parts.append(box(44, 176, 240, 70, "Model hubs / vendors", "Hugging Face, GGUF, Safetensors, PyTorch"))
     parts.append(box(44, 258, 240, 70, "Envoy + NetworkPolicy", "Rate limit, egress blockade", FILL_RED, RED))
-    parts.append(box(44, 340, 240, 70, "MinIO models-ingress", "s3://models-ingress/<model-id>/"))
+    parts.append(box(44, 340, 240, 70, "model-fetch Job -> Quay ModelCar", "<repo>:<model-id>-unverified"))
     parts.append(box(44, 422, 240, 70, "Tekton Trigger", "EventListener fires PipelineRun", FILL_RED, RED))
-    parts.append(T(164, 530, "artifact event ->", 12, RED, "600", "middle"))
+    parts.append(box(44, 504, 240, 88, "Models compared", "Qwen3, Granite 4.1, Llama 3.1 (8B, FP8)"))
+    parts.append(T(164, 620, "artifact event ->", 12, RED, "600", "middle"))
 
     parts.append(R(328, 88, 720, 680, WHITE, BLUE, 2, 10))
     parts.append(T(348, 116, "2. Evaluation  |  OpenShift Pipelines", 16, BLUE, "700"))
@@ -139,7 +140,7 @@ def architecture_overview() -> str:
         (348, 160, 160, "Static scan", "Malware, CVE, license", "40% of S_total", FILL_BLUE, BLUE),
         (524, 160, 160, "Dynamic scan", "Kata, Falco, Kepler, vLLM", "Hard gate", FILL_RED, RED),
         (700, 160, 160, "Capability", "Quality, cost, stability, bias", "35% of S_total", FILL_BLUE, BLUE),
-        (876, 160, 148, "Adversarial", "Injection, jailbreak, harm", "25% of S_total", FILL_BLUE, BLUE),
+        (876, 160, 148, "Adversarial", "Injection, jailbreak, NeMo", "25% of S_total", FILL_BLUE, BLUE),
     ]
     for x, y, w, t, s, f, fill, st in stages:
         parts.append(R(x, y, w, 92, fill, st, 1, 6))
@@ -148,7 +149,7 @@ def architecture_overview() -> str:
         parts.append(T(x + 10, y + 72, f, 11, st, "600"))
 
     parts.append(R(348, 268, 676, 168, FILL_GRAY, STROKE, 1, 8))
-    parts.append(T(368, 296, "DAG: fetch -> static(3) -> dynamic(4) -> capability(4) -> adversarial(3) -> gate", 12, INK, "600"))
+    parts.append(T(368, 296, "DAG: fetch -> static(3) -> dynamic(4) -> capability(4) -> adversarial(4) -> gate", 12, INK, "600"))
     parts.append(T(368, 318, "S_total = 0.40*S_static + 0.35*S_capability + 0.25*S_redteam", 12, MUTED))
     parts.append(R(368, 338, 200, 76, GREEN, GREEN, 0, 6))
     parts.append(T(468, 368, ">= 75  Auto-pass", 14, "#fff", "700", "middle"))
@@ -160,20 +161,22 @@ def architecture_overview() -> str:
     parts.append(T(900, 368, "< 55 / hard gate", 14, "#fff", "700", "middle"))
     parts.append(T(900, 388, "Reject, stay quarantined", 11, "#fff", "400", "middle"))
 
-    parts.append(box(348, 452, 328, 100, "Score gate + Tekton Chains", "Policy-as-code. SLSA provenance. Cosign on PipelineRun.", FILL_BLUE, BLUE))
-    parts.append(box(696, 452, 328, 100, "Scanner images on RHEL UBI 9", "BuildConfig in build-image -> Quay / internal registry.", FILL_GRAY, STROKE))
-    parts.append(T(688, 590, "signed, scored artifact ->", 12, BLUE, "600", "middle"))
+    parts.append(box(348, 452, 328, 90, "Score gate + Tekton Chains", "Policy-as-code. SLSA provenance. Cosign on PipelineRun.", FILL_BLUE, BLUE))
+    parts.append(box(696, 452, 328, 90, "Scanner images on RHEL UBI 9", "BuildConfig in build-image -> internal registry.", FILL_GRAY, STROKE))
+    parts.append(box(348, 556, 328, 90, "NeMo Guardrails (TrustyAI)", "Rails in front of the sandbox model; probes scored.", FILL_GREEN, GREEN))
+    parts.append(box(696, 556, 328, 90, "MLflow (RHOAI)", "Every run logged; compare models in the dashboard.", FILL_GOLD, GOLD))
+    parts.append(T(688, 680, "signed, scored artifact ->", 12, BLUE, "600", "middle"))
     parts.append(T(688, 720, "Tasks isolated. Dynamic probes DNS-only. Scan JSON in MinIO, not the eval PVC.", 11, MUTED, "400", "middle"))
 
     parts.append(Rdash(1072, 88, 344, 680, WHITE, GREEN, 2, 10))
     parts.append(T(1092, 116, "3. Test", 16, GREEN, "700"))
     parts.append(T(1092, 136, "OpenShift AI  |  model-test", 12, MUTED))
-    parts.append(T(1092, 154, "Only auto-pass models arrive.", 11, MUTED))
+    parts.append(T(1092, 154, "Only auto-pass / review models arrive.", 11, MUTED))
     parts.append(box(1092, 176, 304, 70, "RHOAI Model Registry", "version, storage_uri, scan_uri", FILL_GREEN, GREEN))
-    parts.append(box(1092, 258, 304, 70, "Quay + Cosign", "Scanner images; verify at pull"))
-    parts.append(box(1092, 340, 304, 70, "OpenShift GitOps", "Argo CD syncs LLMInferenceService", FILL_GREEN, GREEN))
+    parts.append(box(1092, 258, 304, 70, "Quay ModelCar (verified tag)", "<model-id>-verified-<score>-<version>"))
+    parts.append(box(1092, 340, 304, 70, "LLMInferenceService", "publish-artifact applies serving-yaml", FILL_GREEN, GREEN))
     parts.append(box(1092, 422, 304, 70, "KServe + vLLM", "Live chat only after the gate", FILL_GREEN, GREEN))
-    parts.append(box(1092, 504, 304, 70, "KEDA + observability", "GPU / queue scale; Prometheus"))
+    parts.append(box(1092, 504, 304, 70, "NeMo Guardrails + auth", "Guarded route; kube-rbac-proxy", FILL_GREEN, GREEN))
     parts.append(box(1092, 586, 304, 88, "model-prod (later, manual)", "Demo stops at signed test serving."))
     return wrap(1440, 810, "\n".join(parts), "Three-zone AI model security architecture")
 
@@ -400,14 +403,19 @@ def _pipeline_clean() -> str:
     node(738, 308, 260, 56, "anomaly-bias-detection", "regression / bias / anomaly")
     node(738, 430, 260, 58, "capability-eval", "capability.json", FILL_BLUE, BLUE)
 
-    node(1038, 140, 270, 58, "prompt-injection", "attack success rate")
-    node(1038, 214, 270, 58, "jailbreak-guardrail-bypass", "bypass rate")
-    node(1038, 288, 270, 58, "harmful-content-bias", "harmful rate / illegal")
+    node(1038, 110, 270, 56, "prompt-injection", "attack success rate")
+    node(1038, 176, 270, 56, "jailbreak-guardrail-bypass", "bypass rate")
+    node(1038, 242, 270, 56, "harmful-content-bias", "harmful rate / illegal")
+    node(1038, 308, 270, 56, "nemo-guardrails", "NeMo block / false-positive rate", FILL_GREEN, GREEN)
     node(1038, 430, 270, 58, "adversarial-test", "adversarial-test.json", FILL_BLUE, BLUE)
+    # NeMo Guardrails server in model-sandbox, deployed after dynamic-scan
+    node(738, 370, 260, 48, "nemo-guardrails-start", "NemoGuardrails CR -> sandbox vLLM", FILL_GREEN, GREEN)
+    parts.append(al(998, 394, 1038, 336))
 
     node(1348, 180, 220, 64, "score-gate", "S_total + routing", FILL_BLUE, BLUE)
     node(1348, 270, 220, 64, "publish-artifact", "when passed=true", FILL_GREEN, GREEN)
-    node(1348, 430, 220, 64, "archive-results", "finally (always)", FILL_GOLD, GOLD)
+    node(1348, 350, 220, 64, "nemo-guardrails-test", "NeMo in front of model-test", FILL_GREEN, GREEN)
+    node(1348, 430, 220, 64, "archive-results", "finally: manifest + MLflow run", FILL_GOLD, GOLD)
 
     # fetch -> three static
     parts.append(al(188, 282, 208, 149))
@@ -423,9 +431,10 @@ def _pipeline_clean() -> str:
     parts.append(al(998, 459, 1038, 459))
     parts.append(al(1308, 459, 1348, 212))
     parts.append(al(1458, 244, 1458, 270))
+    parts.append(al(1458, 334, 1458, 350))
 
     parts.append(T(32, 530, "Each column: siblings runAfter the previous merge. Merge tasks always succeed (concat JSON to MinIO scan-result/).", 12, MUTED))
-    parts.append(T(32, 552, "score-gate fails the PipelineRun only when routing=reject. archive-results is pipeline finally and always writes manifest.json.", 12, MUTED))
+    parts.append(T(32, 552, "score-gate fails the PipelineRun only when routing=reject. archive-results (finally) always writes manifest.json and logs the run to MLflow.", 12, MUTED))
     parts.append(T(32, 574, "Workspaces: shared-data = eval-workspace PVC (weights). results = emptyDir per TaskRun, then mc cp to s3://models-eval/<id>/<ver>/scan-result/.", 12, MUTED))
 
     # legend
@@ -434,9 +443,9 @@ def _pipeline_clean() -> str:
     parts.append(R(180, 600, 16, 16, FILL_RED, RED, 1, 3))
     parts.append(T(202, 613, "Hard gate (not in S_total)", 12, INK))
     parts.append(R(420, 600, 16, 16, FILL_GREEN, GREEN, 1, 3))
-    parts.append(T(442, 613, "Conditional publish", 12, INK))
-    parts.append(R(620, 600, 16, 16, FILL_GOLD, GOLD, 1, 3))
-    parts.append(T(642, 613, "finally", 12, INK))
+    parts.append(T(442, 613, "Conditional publish / NeMo Guardrails", 12, INK))
+    parts.append(R(720, 600, 16, 16, FILL_GOLD, GOLD, 1, 3))
+    parts.append(T(742, 613, "finally", 12, INK))
 
     return wrap(1600, 660, "\n".join(parts), "Tekton pipeline DAG for model-security-pipeline")
 
@@ -492,14 +501,14 @@ def zones_network() -> str:
 
 def storage_flow() -> str:
     parts = [arrow_def()]
-    parts.append(T(40, 40, "Storage flow  |  weights vs scan JSON", 18, INK, "700"))
+    parts.append(T(40, 40, "Storage flow  |  weights (Quay ModelCar) vs scan JSON (MinIO) vs runs (MLflow)", 18, INK, "700"))
     parts.append(T(40, 62, "Version = last five characters of PipelineRun name (model-security-9x57m -> 9x57m).", 12, MUTED))
 
     node_w = 240
     y = 100
     items = [
         (40, y, "1. Hugging Face / vendor", "hf://org/model", FILL_RED, RED),
-        (320, y, "2. models-ingress", "s3://models-ingress/<id>/", FILL_RED, RED),
+        (320, y, "2. Quay ModelCar", "<repo>:<id>-unverified", FILL_RED, RED),
         (600, y, "3. eval-workspace PVC", "/models  (weights only)", FILL_BLUE, BLUE),
         (880, y, "4. models-eval scan-result", "s3://models-eval/<id>/<ver>/", FILL_BLUE, BLUE),
         (1160, y, "5. score.json", "routing auto-pass/review/reject", FILL_GOLD, GOLD),
@@ -510,10 +519,10 @@ def storage_flow() -> str:
         parts.append(al(x, y + 40, x + 40, y + 40))
 
     parts.append(T(40, 220, "On auto-pass or review", 14, GREEN, "700"))
-    parts.append(box(40, 240, 320, 80, "6. models-verified", "s3://models-verified/<id>/<ver>/  weights", FILL_GREEN, GREEN))
-    parts.append(box(400, 240, 320, 80, "7. Model Registry", "POST registered_models + URIs", FILL_GREEN, GREEN))
-    parts.append(box(760, 240, 320, 80, "8. GitOps LLMInferenceService", "model-test KServe + vLLM", FILL_GREEN, GREEN))
-    parts.append(box(1120, 240, 280, 80, "always: manifest.json", "archive-results finally", FILL_GOLD, GOLD))
+    parts.append(box(40, 240, 320, 80, "6. Quay retag", "<repo>:<id>-verified-<score>-<ver>", FILL_GREEN, GREEN))
+    parts.append(box(400, 240, 320, 80, "7. Model Registry", "oci:// URI + scan_uri + version", FILL_GREEN, GREEN))
+    parts.append(box(760, 240, 320, 80, "8. LLMInferenceService", "model-test KServe + vLLM + NeMo", FILL_GREEN, GREEN))
+    parts.append(box(1120, 240, 280, 80, "always: manifest + MLflow", "archive-results finally", FILL_GOLD, GOLD))
     parts.append(al(360, 280, 400, 280))
     parts.append(al(720, 280, 760, 280))
 
@@ -522,8 +531,8 @@ def storage_flow() -> str:
         "static-malware.json  |  static-vulnerabilities.json  |  static-license-compliance.json  ->  static-scan.json",
         "dynamic-isolated-runtime.json  |  dynamic-behavior.json  |  dynamic-abnormal-resources.json  |  dynamic-basic-inference.json  ->  dynamic-scan.json",
         "capability-quality.json  |  capability-performance-cost.json  |  capability-stability.json  |  capability-anomaly-bias.json  ->  capability.json",
-        "adversarial-prompt-injection.json  |  adversarial-jailbreak-*.json  |  adversarial-harmful-*.json  ->  adversarial-test.json",
-        "score.json   publish.json   manifest.json",
+        "adversarial-prompt-injection.json  |  -jailbreak-*  |  -harmful-*  |  -nemo-guardrails.json  ->  adversarial-test.json   (+ nemo-guardrails-summary.json)",
+        "score.json   publish.json   manifest.json      ->  also logged to MLflow (metrics + these files as artifacts)",
     ]
     yy = 380
     for line_s in rows:
@@ -531,7 +540,7 @@ def storage_flow() -> str:
         parts.append(T(52, yy + 24, line_s, 12, INK))
         yy += 44
 
-    parts.append(T(40, 620, "Buckets (anonymous=none): models-ingress, models-eval, models-verified, attestations. Scanner images live in the image registry / Quay, not MinIO.", 12, MUTED))
+    parts.append(T(40, 620, "Buckets (anonymous=none): models-eval (scan JSON), attestations, mlflow (MLflow artifacts); models-ingress / models-verified are legacy. Weights live in Quay.", 12, MUTED))
     return wrap(1440, 660, "\n".join(parts), "MinIO and PVC storage flow")
 
 
@@ -577,30 +586,30 @@ def score_gate() -> str:
 
 def gitops_promotion() -> str:
     parts = [arrow_def()]
-    parts.append(T(40, 40, "Promotion  |  auto-pass to model-test", 18, INK, "700"))
+    parts.append(T(40, 40, "Promotion  |  auto-pass or review to model-test", 18, INK, "700"))
     parts.append(T(40, 62, "publish-artifact is the only pipeline write into verified storage and Model Registry. Production is manual.", 12, MUTED))
 
     steps = [
-        (40, 100, FILL_BLUE, BLUE, "score-gate", "passed=true, routing=auto-pass"),
-        (280, 100, FILL_GREEN, GREEN, "publish-artifact", "mc mirror weights + POST registry"),
-        (520, 100, FILL_GREEN, GREEN, "models-verified", "s3://models-verified/<id>/<ver>/"),
-        (760, 100, FILL_GREEN, GREEN, "Model Registry", "storage_uri + scan_uri + version"),
-        (1000, 100, FILL_GREEN, GREEN, "OpenShift GitOps", "Argo CD Application"),
-        (1240, 100, FILL_GREEN, GREEN, "model-test", "LLMInferenceService / vLLM"),
+        (40, 100, FILL_BLUE, BLUE, "score-gate", "routing auto-pass or review"),
+        (280, 100, FILL_GREEN, GREEN, "publish-artifact", "skopeo retag + POST registry"),
+        (520, 100, FILL_GREEN, GREEN, "Quay ModelCar", "<id>-verified-<score>-<ver>"),
+        (760, 100, FILL_GREEN, GREEN, "Model Registry", "oci:// URI + scan_uri + version"),
+        (1000, 100, FILL_GREEN, GREEN, "serving-yaml", "oc apply LLMInferenceService"),
+        (1240, 100, FILL_GREEN, GREEN, "model-test", "vLLM + NeMo Guardrails"),
     ]
     for x, y, f, st, t, s in steps:
         parts.append(box(x, y, 220, 90, t, s, f, st))
     for x in (260, 500, 740, 980, 1220):
         parts.append(al(x, 145, x + 20, 145))
 
-    parts.append(box(40, 230, 340, 90, "Reject / review", "No publish. archive-results still runs.", FILL_RED, RED))
+    parts.append(box(40, 230, 340, 90, "Reject (< 55 or hard gate)", "No publish. archive-results still runs.", FILL_RED, RED))
     parts.append(box(400, 230, 340, 90, "Tekton Chains", "SLSA on PipelineRun. Cosign / KMS.", FILL_BLUE, BLUE))
     parts.append(box(760, 230, 340, 90, "model-prod", "Not a pipeline output. Manual later.", FILL_GRAY, STROKE))
-    parts.append(box(1120, 230, 280, 90, "Observability", "Prometheus, Grafana, KEDA.", FILL_GRAY, STROKE))
+    parts.append(box(1120, 230, 280, 90, "MLflow", "Every run logged (also reject).", FILL_GOLD, GOLD))
 
-    parts.append(T(40, 360, "GitOps manifests: instances/gitops/application-model-test.yaml + instances/model-test/qwen3-8b-fp8-verified.yaml.", 12, MUTED))
-    parts.append(T(40, 382, "Serving reads MinIO models-verified, not Hugging Face. Test-zone NetworkPolicy is intended to deny Hub egress.", 12, MUTED))
-    return wrap(1440, 430, "\n".join(parts), "GitOps promotion from score gate to model-test")
+    parts.append(T(40, 360, "Serving YAML per model: instances/model-test/{qwen3-8b-fp8,granite-4-1-8b-fp8,llama-3-1-8b-fp8}-verified.yaml (oci://PLACEHOLDER replaced).", 12, MUTED))
+    parts.append(T(40, 382, "Serving pulls the verified ModelCar from Quay (oci://), not Hugging Face. model-test serves one model at a time (one GPU).", 12, MUTED))
+    return wrap(1500, 430, "\n".join(parts), "Promotion from score gate to model-test")
 
 
 def main() -> None:

@@ -1,0 +1,56 @@
+# Granite 4.1 8B FP8 (RedHatAI/granite-4.1-8b-fp8) — sandbox serving for the eval pipeline.
+# Same as LLMInferenceService.yaml (Qwen) except spec.model.name and --max-model-len:
+# the model's native 131k context would not leave room for the KV cache on a 24 GB L4.
+# Thinking/reasoning output stays off (the chat template only enables it on request).
+# Pass as PipelineRun param model-sandbox-path.
+# Applied by serve-llm-start: replaces spec.model.uri with oci://…:<model-id>-unverified.
+# Do not include in kustomization (would deploy PLACEHOLDER).
+apiVersion: serving.kserve.io/v1alpha1
+kind: LLMInferenceService
+metadata:
+  name: eval-sandbox
+  namespace: model-sandbox
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+    ai.security.pipeline/eval-serving: "true"
+    security.platform/zone: sandbox
+  annotations:
+    opendatahub.io/hardware-profile-name: gpu-profile
+    opendatahub.io/hardware-profile-namespace: redhat-ods-applications
+    opendatahub.io/model-type: generative
+    openshift.io/display-name: eval-sandbox
+    security.opendatahub.io/enable-auth: "false"
+    security.platform/source-pipeline: model-security-pipeline
+spec:
+  replicas: 1
+  model:
+    uri: oci://PLACEHOLDER
+    name: redhatai-granite-4-1-8b-fp8
+  template:
+    tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+    containers:
+      - name: main
+        env:
+          - name: VLLM_ADDITIONAL_ARGS
+            value: --disable-uvicorn-access-log --max-model-len 16384
+        resources:
+          limits:
+            cpu: "4"
+            memory: 12Gi
+            nvidia.com/gpu: "1"
+          requests:
+            cpu: "2"
+            memory: 8Gi
+            nvidia.com/gpu: "1"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+            scheme: HTTPS
+          initialDelaySeconds: 180
+          periodSeconds: 30
+          timeoutSeconds: 30
+          failureThreshold: 5

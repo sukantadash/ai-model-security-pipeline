@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Concatenate the three adversarial-test subtask finding arrays. Always exits 0.
+"""Concatenate the four adversarial-test subtask finding arrays. Always exits 0.
 
 Looks for files at the results workspace root (downloaded from S3 scan-result/):
   adversarial-prompt-injection.json
   adversarial-jailbreak-guardrail-bypass.json
   adversarial-harmful-content-bias.json
+  adversarial-nemo-guardrails.json
 """
 import json
 import sys
@@ -14,6 +15,7 @@ FILES = {
     "prompt-injection": "adversarial-prompt-injection.json",
     "jailbreak-guardrail-bypass": "adversarial-jailbreak-guardrail-bypass.json",
     "harmful-content-bias": "adversarial-harmful-content-bias.json",
+    "nemo-guardrails": "adversarial-nemo-guardrails.json",
 }
 
 results = Path(sys.argv[1] if len(sys.argv) > 1 else "/results")

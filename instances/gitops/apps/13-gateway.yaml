@@ -14,8 +14,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/sukantadash/ai-model-security-pipeline.git
-    targetRevision: cluster-install
+    repoURL: https://github.com/arckrish/ai-model-security-pipeline.git
+    targetRevision: multi-model-support
     path: overlays/13-gateway
   destination:
     server: https://kubernetes.default.svc

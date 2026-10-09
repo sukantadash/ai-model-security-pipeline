@@ -54,10 +54,22 @@ spec:
         set -euo pipefail
         DEST="$(workspaces.models.path)"
         IMG="${MODELCAR_IMAGE}:${MODEL_ID}-unverified"
-        rm -rf "${DEST:?}"/*
-        mkdir -p "${DEST}"
-        echo "Extracting /models from ${IMG}"
-        oc image extract "${IMG}" --path /models/:${DEST}/ --confirm
+        # Large single-layer ModelCars (~9 GB) can drop mid-download from quay.io
+        # ("unexpected EOF"). Retry the whole extract with a clean destination.
+        ATTEMPTS="${EXTRACT_ATTEMPTS:-4}"
+        for i in $(seq 1 "${ATTEMPTS}"); do
+          rm -rf "${DEST:?}"/* "${DEST:?}"/.[!.]* 2>/dev/null || true
+          mkdir -p "${DEST}"
+          echo "Extracting /models from ${IMG} (attempt ${i}/${ATTEMPTS})"
+          if oc image extract "${IMG}" --path /models/:${DEST}/ --confirm; then
+            break
+          fi
+          if [[ "${i}" -eq "${ATTEMPTS}" ]]; then
+            echo "extract failed after ${ATTEMPTS} attempts" >&2
+            exit 1
+          fi
+          sleep $((i * 20))
+        done
         if [[ -z "$(ls -A "${DEST}" 2>/dev/null || true)" ]]; then
           # Some extract layouts nest under models/
           if [[ -d "${DEST}/models" ]] && [[ -n "$(ls -A "${DEST}/models" 2>/dev/null || true)" ]]; then

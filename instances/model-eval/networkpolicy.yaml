@@ -83,6 +83,15 @@ spec:
           port: 8080
         - protocol: TCP
           port: 8443
+    # MLflow tracking server (instances/mlflow) — archive-results logs each PipelineRun.
+    # OVN matches the pod port after DNAT: the server container listens on 8443 (TLS).
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: redhat-ods-applications
+      ports:
+        - protocol: TCP
+          port: 8443
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0

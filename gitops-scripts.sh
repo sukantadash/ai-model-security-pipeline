@@ -17,8 +17,9 @@
 #   Edit instances/gateway/gateway.yaml hostname (REPLACE_WITH_CLUSTER_APPS_DOMAIN)
 #   Credentials: cp .env.example .env and set HF_TOKEN, QUAY_*, MINIO_ROOT_*, MODELCAR_IMAGE
 #   (gitops-scripts.sh creates cluster Secrets from .env — no quay/minio yaml files)
-#   Model weights: ModelCar OCI on Quay (:unverified → :verified-score-build*). MinIO = scans only.
+#   Model weights: ModelCar OCI on Quay, one shared repo: <model-id>-unverified → <model-id>-verified-<score>-<version>. MinIO = scans only.
 #
+# For an automated, interactive install use ./deploy.sh instead.
 # Run phase-by-phase: copy/paste each phase block into your shell
 # (do not run bash gitops-scripts.sh end-to-end).
 
@@ -156,6 +157,14 @@ oc create secret generic hf-token -n "${NS_MODEL_INGRESS}" \
   --from-literal=HF_TOKEN="${HF_TOKEN}" \
   --dry-run=client -o yaml | oc apply -f -
 
+# MLflow tracking server (instances/mlflow, Argo ai-sec-12-rhoai-dashboard): artifacts in MinIO bucket "mlflow"
+oc create secret generic mlflow-s3-credentials -n redhat-ods-applications \
+  --from-literal=AWS_ACCESS_KEY_ID="${MINIO_ROOT_USER}" \
+  --from-literal=AWS_SECRET_ACCESS_KEY="${MINIO_ROOT_PASSWORD}" \
+  --from-literal=AWS_DEFAULT_REGION=us-east-1 \
+  --from-literal=MLFLOW_S3_ENDPOINT_URL=http://minio.minio-system.svc:9000 \
+  --dry-run=client -o yaml | oc apply -f -
+
 # =============================================================================
 # Phase 3: Build scanner images (Binary BuildConfigs from overlay 06)
 # =============================================================================
@@ -221,7 +230,7 @@ oc get authorino authorino -n kuadrant-system \
   -o jsonpath='Ready={.status.conditions[?(@.type=="Ready")].status} reason={.status.conditions[?(@.type=="Ready")].reason}{"\n"}'
 
 # =============================================================================
-# Phase 5: Build ModelCar (:unverified) + live PipelineRun
+# Phase 5: Build ModelCar (<model-id>-unverified) + live PipelineRun
 # Prerequisites: Argo apps 07–12 Synced (Tasks, Pipeline, Triggers, Chains, RHOAI).
 # MODELCAR_IMAGE is shared repo quay.io/sudash/ai-model-security-pipeline (Job + PipelineRun).
 # Tags: <model-id>-unverified → <model-id>-verified-<score>-<version>.
@@ -258,7 +267,7 @@ oc get pipelinerun -n "${NS_MODEL_EVAL}" -w
 # After finally: CR deleted, namespace remains:
 #   oc get ns "${NS_MODEL_SANDBOX}"
 #   oc get llminferenceservice -n "${NS_MODEL_SANDBOX}"
-# Auto-pass or review: publish-artifact retags ModelCar to :verified-score-buildVERSION,
+# Auto-pass or review: publish-artifact retags ModelCar to <model-id>-verified-<score>-VERSION,
 # registers Model Registry (oci:// URI), and oc apply's serving-yaml with placeholder replaced.
 
 # =============================================================================
