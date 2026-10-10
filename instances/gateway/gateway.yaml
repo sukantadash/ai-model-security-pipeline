@@ -22,7 +22,7 @@ spec:
                 operator: In
                 values:
                   - model-test
-      hostname: inference-gateway.apps.ocp.89b8b.sandbox2732.opentlc.com
+      hostname: inference-gateway.apps.ocp.5pddg.sandbox3591.opentlc.com
       name: https
       port: 443
       protocol: HTTPS
