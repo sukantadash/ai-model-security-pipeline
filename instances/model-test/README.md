@@ -3,8 +3,8 @@
 All serving manifests live in this directory (no subfolders).
 
 - **Phase 2 (overlay `04-zones`):** `namespace.yaml` via `overlays/04-zones/model-test/`
-- **Overlay `16-test-serving`:** network policies, RBAC, `LLMInferenceServiceConfig`
-- **Verified `LLMInferenceService`:** applied by `publish-artifact` (not kustomize)
+- **Overlay `16-test-serving`:** network policies + `LLMInferenceServiceConfig` — applied by **`publish-artifact`** (and still available as a one-shot `oc apply -k overlays/16-test-serving/` for bootstrap)
+- **Verified `LLMInferenceService`:** applied by `publish-artifact` (not kustomize / not Argo autosync)
 
 ## ModelCar + placeholder image
 
@@ -17,9 +17,10 @@ PipelineRun params:
 
 On auto-pass / review, `publish-artifact`:
 
-1. Retags ModelCar `:unverified` → `:verified-score-build<VERSION>`
+1. Retags ModelCar `:unverified` → `:verified-<score>-<VERSION>`
 2. Registers Model Registry with `oci://…`
-3. Replaces **only** the placeholder URI in `serving-yaml` and `oc apply`s it in `model-test`
+3. Applies `overlays/16-test-serving` (`LLMInferenceServiceConfig` + NetworkPolicies) so `baseRefs` resolve
+4. Replaces **only** the placeholder URI in `serving-yaml` and `oc apply`s it in `model-test`
 
 No `.yaml.template` and no rewriting of names or ODH connection annotations.
 

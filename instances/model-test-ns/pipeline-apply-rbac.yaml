@@ -7,8 +7,12 @@ metadata:
     app.kubernetes.io/part-of: ai-model-security-pipeline
 rules:
   - apiGroups: ["serving.kserve.io"]
-    resources: ["llminferenceservices"]
+    resources: ["llminferenceservices", "llminferenceserviceconfigs"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # publish-artifact applies overlays/16-test-serving (zone NetworkPolicies + LLMISConfig)
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get", "list", "create", "update", "patch"]

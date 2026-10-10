@@ -8,7 +8,8 @@ metadata:
 spec:
   description: >
     Retag ModelCar model-id-unverified → model-id-verified-SCORE-VERSION, register in
-    RHOAI Model Registry, and apply the caller-supplied serving YAML after
+    RHOAI Model Registry, apply overlays/16-test-serving (NetworkPolicies +
+    LLMInferenceServiceConfig), then apply the caller-supplied serving YAML after
     replacing only the placeholder image URI.
   params:
     - name: image
@@ -163,7 +164,8 @@ spec:
         URI="$(cat /scratch/published-uri)"
         OUT="/scratch/patched-test"
         APPLY="/scratch/patched-test-apply"
-        rm -rf "${OUT}" "${APPLY}"
+        STAGE="/scratch/test-serving"
+        rm -rf "${OUT}" "${APPLY}" "${STAGE}"
         mkdir -p "${APPLY}"
         export GIT_URL
         export GIT_PATH="$(params.serving-yaml)"
@@ -171,6 +173,7 @@ spec:
         export OUT_DIR="${OUT}"
         export MODEL_URI="${URI}"
         export NAMESPACE="$(params.test-namespace)"
+        export TEST_SERVING_OUT="${STAGE}"
         /scripts/clone-and-patch-llmis.sh
         cp -a "${OUT}/." "${APPLY}/"
     - name: apply-test
@@ -180,7 +183,16 @@ spec:
         #!/usr/bin/env bash
         set -euo pipefail
         NS="$(params.test-namespace)"
+        OVERLAY="/scratch/test-serving/overlays/16-test-serving"
         DIR="/scratch/patched-test-apply"
+        # LLMInferenceServiceConfig + zone NetworkPolicies (same as oc apply -k overlays/16-test-serving/).
+        # Must land before the verified LLMIS so baseRefs resolve and the workload can start.
+        if [[ -d "${OVERLAY}" ]]; then
+          oc apply -k "${OVERLAY}"
+          echo "applied overlays/16-test-serving (LLMInferenceServiceConfig + NetworkPolicies) in ${NS}"
+        else
+          echo "overlays/16-test-serving not staged; skip (git-url empty or clone skipped)" >&2
+        fi
         if [[ ! -d "${DIR}" ]] || [[ -z "$(ls -A "${DIR}" 2>/dev/null || true)" ]]; then
           echo "no patched model-test YAML; skip apply" >&2
           exit 0

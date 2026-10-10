@@ -107,7 +107,7 @@ HTTP clients against `model-endpoint`. Garak / PyRIT / Promptfoo / LLM Guard are
 |---------------|------|--------|
 | `serve-llm-start` | After static-scan; all later tasks wait | Replace placeholder with `oci://…:<model-id>-unverified`; apply sandbox YAML |
 | `score-gate` | After adversarial merge | Writes `score.json`; Task fails only on `routing=reject` |
-| `publish-artifact` | `when: routing in auto-pass, review` | Retag `:verified-score-buildVERSION`; register MR; apply `serving-yaml` (URI only) |
+| `publish-artifact` | `when: routing in auto-pass, review` | Retag `:verified-<score>-VERSION`; register MR; apply `overlays/16-test-serving`; apply `serving-yaml` (URI only) |
 | `nemo-guardrails-start` | After dynamic-scan | `nemo-guardrails-deploy` in `model-sandbox` (auth off); result `endpoint-url` |
 | `nemo-guardrails-test` | After publish, same `when` + `nemo-guardrails-enabled` | `nemo-guardrails-deploy` in `model-test` (auth on, Route `nemo-guardrails`) |
 | `nemo-guardrails-stop` | `finally` | Deletes the sandbox `NemoGuardrails` CR + ConfigMaps |

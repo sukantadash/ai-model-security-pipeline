@@ -11,7 +11,7 @@ OpenShift GitOps (Argo CD) deploys the declarative overlays from `script.sh` via
 | `apps/application-model-test.yaml` | Watches `qwen3-8b-fp8-verified.yaml` → `model-test` |
 | `../../gitops-scripts.sh` | Step-by-step runbook: single apply + post-sync (like `script.sh`) |
 
-**Not synced by Argo:** `overlays/16-test-serving` (gitignored generated secrets/manifests) — applied in `gitops-scripts.sh` post-sync.
+**Not synced by Argo:** `overlays/16-test-serving` — applied by **`publish-artifact`** on auto-pass/review (and optionally once via `oc apply -k overlays/16-test-serving/` for bootstrap). Argo must not autosync the verified LLMIS YAML (placeholder URI).
 
 ## Prerequisites
 

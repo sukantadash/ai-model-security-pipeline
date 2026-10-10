@@ -262,7 +262,8 @@ oc get pipelinerun -n "${NS_MODEL_EVAL}" -w
 # registers Model Registry (oci:// URI), and oc apply's serving-yaml with placeholder replaced.
 
 # =============================================================================
-# Phase 6: Test serving (overlay 16 — not an Argo app; gitignored generated files)
+# Phase 6: Test serving smoke (overlay 16 is applied by publish-artifact; optional bootstrap:
+#   oc apply -k ./overlays/16-test-serving/ -n "${NS_MODEL_TEST}")
 # =============================================================================
 
 # Smoke test:
