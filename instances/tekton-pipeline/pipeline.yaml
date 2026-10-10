@@ -42,6 +42,16 @@ spec:
     - name: test-namespace
       type: string
       default: model-test
+    - name: nemo-guardrails-enabled
+      type: string
+      default: 'true'
+      description: >
+        "true" deploys NeMo Guardrails in front of the sandbox model (adversarial subtask
+        nemo-guardrails) and in front of the verified model in test-namespace after publish.
+    - name: test-guardrails-name
+      type: string
+      default: nemo-guardrails
+      description: NemoGuardrails CR / Service / Route name in test-namespace
   workspaces:
   - name: shared-data
     description: eval-workspace PVC for model weights only (scan JSON is in MinIO models-eval)
@@ -49,6 +59,8 @@ spec:
     description: Pod-local emptyDir for scan JSON before S3 upload; not shared across TaskRuns
   tasks:
   - name: fetch-artifact
+    # The Task itself retries the extract 4x; this re-runs the whole TaskRun if the pod dies.
+    retries: 2
     taskRef:
       name: fetch-artifact
     params:
@@ -240,6 +252,26 @@ spec:
     params:
     - *id001
     - *id002
+  - name: nemo-guardrails-start
+    runAfter:
+    - dynamic-scan
+    taskRef:
+      name: nemo-guardrails-deploy
+    params:
+    - name: enabled
+      value: $(params.nemo-guardrails-enabled)
+    - name: namespace
+      value: $(params.sandbox-namespace)
+    - name: pipeline-run-name
+      value: $(context.pipelineRun.name)
+    - name: model-id
+      value: $(params.model-id)
+    - name: model-endpoint
+      value: $(tasks.serve-llm-start.results.endpoint-url)
+    - name: llmis-name
+      value: $(tasks.serve-llm-start.results.service-name)
+    - name: enable-auth
+      value: 'false'
   - name: quality
     retries: 2
     runAfter:
@@ -366,11 +398,33 @@ spec:
     - *id001
     - *id002
     - *id003
+  - name: nemo-guardrails
+    retries: 2
+    runAfter:
+    - capability-eval
+    - nemo-guardrails-start
+    taskRef:
+      name: adversarial-test-nemo-guardrails
+    workspaces:
+    - name: models
+      workspace: shared-data
+      subPath: models
+    - name: results
+      workspace: results
+    params:
+    - *id001
+    - *id002
+    - *id003
+    - name: guardrails-endpoint
+      value: $(tasks.nemo-guardrails-start.results.endpoint-url)
+    - name: guardrails-enabled
+      value: $(params.nemo-guardrails-enabled)
   - name: adversarial-test
     runAfter:
     - prompt-injection
     - jailbreak-guardrail-bypass
     - harmful-content-bias
+    - nemo-guardrails
     taskRef:
       name: adversarial-test-merge
     workspaces:
@@ -422,7 +476,46 @@ spec:
     - name: models
       workspace: shared-data
       subPath: models
+  - name: nemo-guardrails-test
+    runAfter:
+    - publish-artifact
+    when:
+    - input: $(tasks.score-gate.results.routing)
+      operator: in
+      values:
+      - auto-pass
+      - review
+    - input: $(params.nemo-guardrails-enabled)
+      operator: in
+      values:
+      - 'true'
+    taskRef:
+      name: nemo-guardrails-deploy
+    params:
+    - name: enabled
+      value: $(params.nemo-guardrails-enabled)
+    - name: namespace
+      value: $(params.test-namespace)
+    - name: name
+      value: $(params.test-guardrails-name)
+    - name: pipeline-run-name
+      value: $(context.pipelineRun.name)
+    - name: model-id
+      value: $(params.model-id)
+    - name: enable-auth
+      value: 'true'
+    # First pull of the ~9 GB ModelCar on the model-test GPU node can exceed the 900s default.
+    - name: wait-timeout
+      value: 1800s
   finally:
+  - name: nemo-guardrails-stop
+    taskRef:
+      name: nemo-guardrails-delete
+    params:
+    - name: pipeline-run-name
+      value: $(context.pipelineRun.name)
+    - name: namespace
+      value: $(params.sandbox-namespace)
   - name: serve-llm-stop
     taskRef:
       name: serve-llm-stop

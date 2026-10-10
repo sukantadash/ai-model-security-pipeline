@@ -1,0 +1,22 @@
+# NeMo Guardrails with security.opendatahub.io/enable-auth=true runs kube-rbac-proxy,
+# which calls the kube-apiserver (TokenReview / SubjectAccessReview) on every request.
+# OVN evaluates that traffic after DNAT to <node>:6443, so the zone policy's
+# ClusterIP 172.30.0.0/16:443 rule never matches and requests hang (route → 504).
+# Same pattern as instances/model-test/networkpolicy-router-apiserver.yaml.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: nemo-guardrails-allow-kube-apiserver
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+    ai.security.pipeline/component: nemo-guardrails
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: trustyai
+  policyTypes:
+    - Egress
+  egress:
+    - ports:
+        - protocol: TCP
+          port: 6443

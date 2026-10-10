@@ -1,4 +1,4 @@
-# Eval pipeline SA applies verified LLMInferenceService into this namespace on auto-pass.
+# Eval pipeline SA applies verified LLMInferenceService (and its NeMo Guardrails) into this namespace on auto-pass.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -12,6 +12,20 @@ rules:
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get", "list", "create", "update", "patch"]
+  # nemo-guardrails-test: NeMo Guardrails in front of the verified model
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list"]
+  - apiGroups: ["trustyai.opendatahub.io"]
+    resources: ["nemoguardrails"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # nemo-guardrails-deploy waits for / restarts the operator-created Deployment
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "patch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

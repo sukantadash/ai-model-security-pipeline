@@ -54,16 +54,24 @@ spec:
         set -euo pipefail
         DEST="$(workspaces.models.path)"
         IMG="${MODELCAR_IMAGE}:${MODEL_ID}-unverified"
-        mkdir -p "${DEST}"
-        # Clear previous weights without failing on an empty dir (set -e + glob).
-        find "${DEST}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
-        echo "Extracting /models from ${IMG} -> ${DEST}"
-        df -h "${DEST}" || true
-        if ! oc image extract "${IMG}" --path "/models/:${DEST}/" --confirm; then
-          echo "oc image extract failed for ${IMG}" >&2
-          ls -la /run/secrets/quay >&2 || true
-          exit 1
-        fi
+        # Large single-layer ModelCars (~9 GB) can drop mid-download from quay.io
+        # ("unexpected EOF"). Retry the whole extract with a clean destination.
+        ATTEMPTS="${EXTRACT_ATTEMPTS:-4}"
+        for i in $(seq 1 "${ATTEMPTS}"); do
+          mkdir -p "${DEST}"
+          find "${DEST}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+          echo "Extracting /models from ${IMG} -> ${DEST} (attempt ${i}/${ATTEMPTS})"
+          df -h "${DEST}" || true
+          if oc image extract "${IMG}" --path "/models/:${DEST}/" --confirm; then
+            break
+          fi
+          if [[ "${i}" -eq "${ATTEMPTS}" ]]; then
+            echo "oc image extract failed for ${IMG} after ${ATTEMPTS} attempts" >&2
+            ls -la /run/secrets/quay >&2 || true
+            exit 1
+          fi
+          sleep $((i * 20))
+        done
         if [[ -d "${DEST}/models" ]] && [[ -n "$(ls -A "${DEST}/models" 2>/dev/null || true)" ]]; then
           shopt -s dotglob nullglob
           mv "${DEST}/models"/* "${DEST}/"

@@ -172,6 +172,9 @@ done
 # Overlay: 07-tekton-tasks  DAG: docs/pipeline.md
 # =============================================================================
 oc apply -k ./overlays/07-tekton-tasks/ -n "${NS_MODEL_EVAL}"
+# Includes ConfigMap nemo-guardrails-config-template (instances/nemo-guardrails/config/).
+# NeMo Guardrails needs trustyai: Managed (Phase 11) and the NemoGuardrails CRD:
+#   oc get crd nemoguardrails.trustyai.opendatahub.io
 
 # =============================================================================
 # Phase 7: Tekton Pipeline
@@ -323,6 +326,12 @@ GATEWAY_HOST=$(oc get gateway openshift-ai-inference -n openshift-ingress \
 TOKEN="$(oc create token test-user -n "${NS_MODEL_TEST}")"
 curl -sS "https://${GATEWAY_HOST}/${NS_MODEL_TEST}/qwen3-8b-fp8/v1/models" \
   -H "Authorization: Bearer ${TOKEN}" | jq .
+#
+# NeMo Guardrails in front of the verified model (created by nemo-guardrails-test on publish):
+GUARDRAILS_ROUTE="https://$(oc get routes/nemo-guardrails -n "${NS_MODEL_TEST}" -o jsonpath='{.status.ingress[0].host}' 2>/dev/null)"
+curl -sk -X POST "${GUARDRAILS_ROUTE}/v1/chat/completions" \
+  -H "Content-Type: application/json" -H "Authorization: Bearer ${TOKEN}" \
+  -d '{"model":"redhatai-qwen3-8b-fp8-dynamic","messages":[{"role":"user","content":"I yearn for violence"}]}'
 
 # =============================================================================
 # Phase 16: GitOps App-of-Apps (platform overlays + model-test promotion)

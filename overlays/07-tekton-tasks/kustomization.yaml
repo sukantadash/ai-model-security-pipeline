@@ -5,3 +5,5 @@ kind: Kustomization
 
 resources:
   - ../../instances/tekton-tasks
+  # NeMo Guardrails config template (ConfigMap nemo-guardrails-config-template in model-eval)
+  - ../../instances/nemo-guardrails

@@ -18,6 +18,7 @@ SUBTASKS = (
     "prompt-injection",
     "jailbreak-guardrail-bypass",
     "harmful-content-bias",
+    "nemo-guardrails",
 )
 
 

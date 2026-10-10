@@ -13,6 +13,7 @@ The root [README.md](../README.md) is the high-level design (zones, pipeline tas
 | [Scoring and policy](scoring.md) | `S_total`, hard gates, routing |
 | [Zones and network](zones-and-network.md) | Namespaces, NetworkPolicy, SCC, Kata |
 | [Storage and registry](storage-and-registry.md) | MinIO buckets, PVC, Model Registry |
+| [NeMo Guardrails](nemo-guardrails.md) | TrustyAI `NemoGuardrails` in sandbox + test, rails, adversarial subtask |
 | [Detailed design](detailed-design.md) | Tool tables, per-subtask activities, and further improvements (fetch through archive) |
 | [DemoJam](demojam.md) | Proposal copy, demo outline, upload asset |
 
@@ -42,3 +43,4 @@ Regenerate SVG with [`diagrams/generate.py`](diagrams/generate.py).
 | Zone NetworkPolicies | `instances/model-ingress/`, `model-eval/`, `model-sandbox/`, `model-test/` |
 | Overlays | `overlays/00-gpu-operators` … `17-gitops` |
 | Scanner images | `builds/` |
+| NeMo Guardrails rails | `instances/nemo-guardrails/config/` |

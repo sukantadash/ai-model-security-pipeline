@@ -18,7 +18,9 @@
 | `git-url` | param | Git repo with serving YAML |
 | `model-sandbox-path` | param | File path to sandbox LLMIS YAML (placeholder image) |
 | `serving-yaml` | param | File path to verified LLMIS YAML (placeholder image only) |
-| `shared-data` | workspace | PVC `eval-workspace` — **weights only** (extracted from `<model-id>-unverified`) |
+| `nemo-guardrails-enabled` | param | Default `'true'`. NeMo Guardrails in sandbox (scored) and in front of the verified model |
+| `test-guardrails-name` | param | Default `nemo-guardrails`. CR / Service / Route name in `model-test` |
+| `shared-data` | workspace | PVC `eval-workspace` — **weights only** (extracted from `:unverified`) |
 | `results` | workspace | Pod-local `emptyDir` for JSON before S3 upload; not shared across TaskRuns |
 
 Capability-eval and adversarial-test TaskRuns are CPU HTTP clients. GPU is requested by the **sandbox** `LLMInferenceService` in `model-sandbox`.
@@ -31,11 +33,13 @@ fetch-artifact
   -> serve-llm-start
   -> isolated-runtime | behavior | abnormal-resources | basic-inference  -> dynamic-scan (merge)
   -> quality | performance-cost | stability-check | anomaly-bias-detection  -> capability-eval (merge)
-  -> prompt-injection | jailbreak-guardrail-bypass | harmful-content-bias  -> adversarial-test (merge)
+     nemo-guardrails-start   (parallel with capability; NemoGuardrails CR in model-sandbox)
+  -> prompt-injection | jailbreak-guardrail-bypass | harmful-content-bias | nemo-guardrails  -> adversarial-test (merge)
   -> score-gate
   -> publish-artifact   when routing is auto-pass or review
+  -> nemo-guardrails-test   when routing is auto-pass or review and nemo-guardrails-enabled=true
 
-finally: serve-llm-stop, archive-results
+finally: nemo-guardrails-stop, serve-llm-stop, archive-results
 ```
 
 Merge Tasks always succeed. They concat per-subtask JSON into `static-scan.json`, `dynamic-scan.json`, `capability.json`, `adversarial-test.json`.
@@ -87,13 +91,14 @@ HTTP clients against `model-endpoint`. Image is UBI Python (`vllm_client.py`). F
 
 ### Adversarial test (stage 4) — 25% of `S_total`
 
-HTTP clients against `model-endpoint`. Garak / PyRIT / Promptfoo / LLM Guard are **not** installed.
+HTTP clients against `model-endpoint`. Garak / PyRIT / Promptfoo / LLM Guard are **not** installed. `nemo-guardrails` targets the NeMo Guardrails endpoint from `nemo-guardrails-start` instead ([NeMo Guardrails](nemo-guardrails.md)).
 
 | Pipeline task | Output |
 |---------------|--------|
 | `prompt-injection` | `adversarial-prompt-injection.json` |
 | `jailbreak-guardrail-bypass` | `adversarial-jailbreak-guardrail-bypass.json` |
 | `harmful-content-bias` | `adversarial-harmful-content-bias.json` |
+| `nemo-guardrails` | `adversarial-nemo-guardrails.json` (block rate, false-positive rate through NeMo) |
 | `adversarial-test` | `adversarial-test.json` |
 
 ### Gate, publish, archive
@@ -102,7 +107,10 @@ HTTP clients against `model-endpoint`. Garak / PyRIT / Promptfoo / LLM Guard are
 |---------------|------|--------|
 | `serve-llm-start` | After static-scan; all later tasks wait | Replace placeholder with `oci://…:<model-id>-unverified`; apply sandbox YAML |
 | `score-gate` | After adversarial merge | Writes `score.json`; Task fails only on `routing=reject` |
-| `publish-artifact` | `when: routing in auto-pass, review` | Retag `<model-id>-verified-<score>-<version>`; register MR; apply `serving-yaml` |
+| `publish-artifact` | `when: routing in auto-pass, review` | Retag `:verified-score-buildVERSION`; register MR; apply `serving-yaml` (URI only) |
+| `nemo-guardrails-start` | After dynamic-scan | `nemo-guardrails-deploy` in `model-sandbox` (auth off); result `endpoint-url` |
+| `nemo-guardrails-test` | After publish, same `when` + `nemo-guardrails-enabled` | `nemo-guardrails-deploy` in `model-test` (auth on, Route `nemo-guardrails`) |
+| `nemo-guardrails-stop` | `finally` | Deletes the sandbox `NemoGuardrails` CR + ConfigMaps |
 | `serve-llm-stop` | `finally` | Deletes the sandbox `LLMInferenceService` (namespace stays) |
 | `archive-results` | `finally` (always) | `manifest.json` in the same scan-result prefix |
 
@@ -118,7 +126,9 @@ Built in namespace `build-image` (no zone NetworkPolicy). Pulled by Tasks from t
 | `ai-security-static-scan` | static subtasks |
 | `ai-security-dynamic-test` | dynamic subtasks |
 | `ai-security-capability-eval` | capability subtasks |
-| `ai-security-adversarial-test` | adversarial subtasks |
+| `ai-security-adversarial-test` | adversarial subtasks (including `nemo-guardrails`) |
+| `openshift/cli` (in-cluster) | serve-llm, nemo-guardrails-deploy / -delete |
+| TrustyAI NeMo image (operator-managed) | `NemoGuardrails` server pods — not built here |
 | `ai-security-score-gate` | score-gate |
 | `ai-security-publish` | publish-artifact, archive-results |
 

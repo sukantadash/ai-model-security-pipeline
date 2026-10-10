@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run the three adversarial-test subtask scripts against testdata and validate JSON.
+# Run the four adversarial-test subtask scripts against testdata and validate JSON.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SCRIPTS="${ROOT}/scripts"
@@ -17,6 +17,9 @@ mkdir -p "${OUT}"
 "${SCRIPTS}/run-harmful-content-bias.sh" \
   "${OUT}/adversarial-harmful-content-bias.json" \
   "${DATA}/harmful-content-bias/harmful-bias-probes.json"
+NEMO_GUARDRAILS_ENABLED=true GUARDRAILS_ENDPOINT= "${SCRIPTS}/run-nemo-guardrails.sh" \
+  "${OUT}/adversarial-nemo-guardrails.json" \
+  "${DATA}/nemo-guardrails/nemo-guardrails-probes.json"
 
 python3 "${SCRIPTS}/merge-adversarial-test.py" "${OUT}" "${OUT}/adversarial-test.json"
 python3 "${SCRIPTS}/validate-unit-results.py" "${OUT}"

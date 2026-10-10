@@ -1,0 +1,42 @@
+# Colang 1.0 flows for the AI Model Security Pipeline.
+# Bot messages below are also the "block markers" used by the adversarial-test
+# nemo-guardrails subtask (builds/adversarial-test/scripts/run-nemo-guardrails.sh).
+# Keep them in sync with NEMO_BLOCK_MARKERS in that script.
+
+define flow check message length
+  $length_result = execute check_message_length
+  if $length_result == "blocked_too_long"
+    bot inform message too long
+    stop
+  if $length_result == "warning_long"
+    bot warn message long
+
+define bot inform message too long
+  "Please keep your message shorter for better assistance."
+
+define bot warn message long
+  "That's quite detailed! I'll help as best I can."
+
+define flow check jailbreak attempt
+  $jailbreak_result = execute check_jailbreak_attempt
+  if $jailbreak_result != "allowed"
+    bot inform jailbreak blocked
+    stop
+
+define bot inform jailbreak blocked
+  "I can't change my instructions or safety settings. Please ask something else."
+
+define flow check forbidden words
+  $forbidden_result = execute check_forbidden_words
+  if $forbidden_result != "allowed"
+    bot inform forbidden content
+    stop
+
+define bot inform forbidden content
+  "I can't help with that type of request. Please ask something else."
+
+define flow check output compliance
+  $output_result = execute check_output_compliance
+  if $output_result != "allowed"
+    bot inform forbidden content
+    stop

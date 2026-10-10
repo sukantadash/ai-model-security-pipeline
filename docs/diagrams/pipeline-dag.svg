@@ -55,27 +55,37 @@
 <rect x="738" y="430" width="260" height="58" rx="6" fill="#E7F1FA" stroke="#0066CC" stroke-width="1"/>
 <text x="748" y="452" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">capability-eval</text>
 <text x="748" y="470" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">capability.json</text>
-<rect x="1038" y="140" width="270" height="58" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
-<text x="1048" y="162" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">prompt-injection</text>
-<text x="1048" y="180" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">attack success rate</text>
-<rect x="1038" y="214" width="270" height="58" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
-<text x="1048" y="236" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">jailbreak-guardrail-bypass</text>
-<text x="1048" y="254" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">bypass rate</text>
-<rect x="1038" y="288" width="270" height="58" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
-<text x="1048" y="310" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">harmful-content-bias</text>
-<text x="1048" y="328" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">harmful rate / illegal</text>
+<rect x="1038" y="110" width="270" height="56" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="1048" y="132" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">prompt-injection</text>
+<text x="1048" y="150" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">attack success rate</text>
+<rect x="1038" y="176" width="270" height="56" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="1048" y="198" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">jailbreak-guardrail-bypass</text>
+<text x="1048" y="216" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">bypass rate</text>
+<rect x="1038" y="242" width="270" height="56" rx="6" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
+<text x="1048" y="264" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">harmful-content-bias</text>
+<text x="1048" y="282" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">harmful rate / illegal</text>
+<rect x="1038" y="308" width="270" height="56" rx="6" fill="#E9F7E6" stroke="#3E8635" stroke-width="1"/>
+<text x="1048" y="330" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">nemo-guardrails</text>
+<text x="1048" y="348" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">NeMo block / false-positive rate</text>
 <rect x="1038" y="430" width="270" height="58" rx="6" fill="#E7F1FA" stroke="#0066CC" stroke-width="1"/>
 <text x="1048" y="452" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">adversarial-test</text>
 <text x="1048" y="470" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">adversarial-test.json</text>
+<rect x="738" y="370" width="260" height="48" rx="6" fill="#E9F7E6" stroke="#3E8635" stroke-width="1"/>
+<text x="748" y="392" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">nemo-guardrails-start</text>
+<text x="748" y="410" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">NemoGuardrails CR -&gt; sandbox vLLM</text>
+<line x1="998" y1="394" x2="1038" y2="336" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
 <rect x="1348" y="180" width="220" height="64" rx="6" fill="#E7F1FA" stroke="#0066CC" stroke-width="1"/>
 <text x="1358" y="202" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">score-gate</text>
 <text x="1358" y="220" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">S_total + routing</text>
 <rect x="1348" y="270" width="220" height="64" rx="6" fill="#E9F7E6" stroke="#3E8635" stroke-width="1"/>
 <text x="1358" y="292" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">publish-artifact</text>
 <text x="1358" y="310" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">when passed=true</text>
+<rect x="1348" y="350" width="220" height="64" rx="6" fill="#E9F7E6" stroke="#3E8635" stroke-width="1"/>
+<text x="1358" y="372" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">nemo-guardrails-test</text>
+<text x="1358" y="390" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">NeMo in front of model-test</text>
 <rect x="1348" y="430" width="220" height="64" rx="6" fill="#FFF4D4" stroke="#F0AB00" stroke-width="1"/>
 <text x="1358" y="452" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">archive-results</text>
-<text x="1358" y="470" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">finally (always)</text>
+<text x="1358" y="470" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">finally (+ stop CRs)</text>
 <line x1="188" y1="282" x2="208" y2="149" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
 <line x1="188" y1="282" x2="208" y2="219" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
 <line x1="188" y1="282" x2="208" y2="289" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
@@ -87,6 +97,7 @@
 <line x1="998" y1="459" x2="1038" y2="459" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
 <line x1="1308" y1="459" x2="1348" y2="212" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
 <line x1="1458" y1="244" x2="1458" y2="270" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="1458" y1="334" x2="1458" y2="350" stroke="#6A6E73" stroke-width="1.5" marker-end="url(#arr)"/>
 <text x="32" y="530" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Each column: siblings runAfter the previous merge. Merge tasks always succeed (concat JSON to MinIO scan-result/).</text>
 <text x="32" y="552" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">score-gate fails the PipelineRun only when routing=reject. archive-results is pipeline finally and always writes manifest.json.</text>
 <text x="32" y="574" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Workspaces: shared-data = eval-workspace PVC (weights). results = emptyDir per TaskRun, then mc cp to s3://models-eval/&lt;id&gt;/&lt;ver&gt;/scan-result/.</text>
@@ -95,7 +106,7 @@
 <rect x="180" y="600" width="16" height="16" rx="3" fill="#FFF5F5" stroke="#C9190B" stroke-width="1"/>
 <text x="202" y="613" fill="#151515" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Hard gate (not in S_total)</text>
 <rect x="420" y="600" width="16" height="16" rx="3" fill="#E9F7E6" stroke="#3E8635" stroke-width="1"/>
-<text x="442" y="613" fill="#151515" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Conditional publish</text>
-<rect x="620" y="600" width="16" height="16" rx="3" fill="#FFF4D4" stroke="#F0AB00" stroke-width="1"/>
-<text x="642" y="613" fill="#151515" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">finally</text>
+<text x="442" y="613" fill="#151515" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Conditional publish / NeMo Guardrails</text>
+<rect x="720" y="600" width="16" height="16" rx="3" fill="#FFF4D4" stroke="#F0AB00" stroke-width="1"/>
+<text x="742" y="613" fill="#151515" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">finally</text>
 </svg>

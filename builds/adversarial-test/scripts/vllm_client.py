@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""OpenAI-compatible client for the eval-zone LLMInferenceService.
+"""OpenAI-compatible client for the eval-zone LLMInferenceService (and NeMo Guardrails server).
 
 Canonical copy: builds/common/scripts/vllm_client.py
 Duplicated into dynamic-test, capability-eval, and adversarial-test image contexts
@@ -152,6 +152,14 @@ def chat(
     if isinstance(choices, list) and choices:
         msg = choices[0].get("message") or {}
         text = str(msg.get("content") or choices[0].get("text") or "")
+    else:
+        # NeMo Guardrails server (RHOAI 3.2) answers {"messages": [{"role": "assistant", ...}]}
+        messages = payload.get("messages") if isinstance(payload, dict) else None
+        if isinstance(messages, list):
+            for msg in reversed(messages):
+                if isinstance(msg, dict) and msg.get("role") in ("assistant", "bot", None):
+                    text = str(msg.get("content") or "")
+                    break
     result["text"] = text
     usage = payload.get("usage") if isinstance(payload, dict) else {}
     result["completion_tokens"] = int((usage or {}).get("completion_tokens") or 0)
