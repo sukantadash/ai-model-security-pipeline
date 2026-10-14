@@ -21,6 +21,8 @@ spec:
       managementState: Managed
     trustyai:
       managementState: Managed
+    mlflowoperator:
+      managementState: Managed
     codeflare:
       managementState: Removed
     ray:

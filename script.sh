@@ -103,6 +103,7 @@ oc apply -f ./instances/storage/verified-models-pvc.yaml -n "${NS_MODEL_TEST}"
 #
 # Secrets (see instances/secrets/README.md):
 # cp minio-s3-secret.yaml.template minio-s3-secret.yaml   # edit credentials first
+# ! Create minio-s3-secret.yaml first !
 for ns in "${NS_MODEL_INGRESS}" "${NS_MODEL_EVAL}" "${NS_MODEL_SANDBOX}" "${NS_MODEL_TEST}"; do
   oc apply -f minio-s3-secret.yaml -n "${ns}"
 done
@@ -202,6 +203,14 @@ oc apply -k ./overlays/12-rhoai-dashboard/
 oc wait --for=condition=Available deployment/model-registry-db -n rhoai-model-registries --timeout=300s
 oc wait --for=condition=Available mr/model-registry -n rhoai-model-registries --timeout=600s
 oc get mr -n rhoai-model-registries
+
+# =============================================================================
+# Phase 11.1: Deploy EvalHub
+# Overlay: 18-lmeval
+# Required for using evalhub evaluations against the model
+# Make sure datasciencecluster - mlflowoperator is managed
+# =============================================================================
+oc apply -k ./overlays/18-lmeval/
 
 # Live pipeline (docs/pipeline.md DAG). Edit git-url in pipelinerun-example.yaml
 # to a reachable HTTPS repo; push instances/model-sandbox/LLMInferenceService.yaml.

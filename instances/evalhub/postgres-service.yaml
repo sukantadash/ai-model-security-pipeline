@@ -1,0 +1,13 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: postgres-evalhub-db-service
+  namespace: evalhub
+spec:
+  selector:
+    app: postgresql-evalhub
+  ports:
+    - name: postgresql-evalhub
+      protocol: TCP
+      port: 5432
+      targetPort: 5432
