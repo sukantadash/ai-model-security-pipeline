@@ -1,0 +1,212 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: evalhub-benchmark
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+    ai.security.pipeline/stage: evalhub
+spec:
+  description: >
+    Submit an EvalHub benchmark job (from overlays/18-evalhub/evalhub-test.ipynb),
+    stream logs until completion, fetch job results, and fail the Task when
+    results.test.pass is false.
+  params:
+  - name: evalhub-url
+    type: string
+    description: EvalHub base URL (EVALHUB_URL)
+    default: https://evalhub-evalhub.apps.ocp.abcd.abcd.opentlc.com
+  - name: tenant-ns
+    type: string
+    description: EvalHub tenant namespace (TENANT_NS); also used to read secret evalhub-api-token
+    default: evalhub
+  - name: job-name
+    type: string
+    description: EvalHub job name (JOB_NAME)
+    default: my-eval
+  - name: ai-model-url
+    type: string
+    description: Model OpenAI-compatible URL (AI_MODEL_URL)
+    default: http://redhatai-qwen3-8b-fp8-dynamic-predictor.evalhub.svc.cluster.local:8080/v1
+  - name: ai-model-name
+    type: string
+    description: Model name served at that URL (AI_MODEL_NAME)
+    default: redhatai-qwen3-8b-fp8-dynamic
+  - name: experiment-tag
+    type: string
+    description: MLflow experiment tag value for key model_name (EXPERIMENT_TAG)
+  - name: provider-id
+    type: string
+    description: EvalHub provider id (PROVIDER_ID), e.g. garak or guidellm
+    default: garak
+  - name: provider-id-benchmark
+    type: string
+    description: Benchmark id under that provider (PROVIDER_ID_BENCHMARK), e.g. quick
+    default: quick
+  - name: experiment-name
+    type: string
+    description: MLflow experiment name (EXPERIMENT_NAME); empty uses AI_MODEL_NAME-PROVIDER_ID_BENCHMARK
+    default: "my-eval"
+  - name: image
+    type: string
+    default: registry.access.redhat.com/ubi9/python-311:latest # or builds/evalhub-eval
+  results:
+  - name: job-id
+    description: EvalHub job resource id
+  - name: passed
+    description: true when results.test.pass is true
+  - name: result-file
+    description: Path to results JSON on the results workspace
+  workspaces:
+  - name: results
+  steps:
+  - name: submit-and-wait
+    image: $(params.image)
+    env:
+    - name: EVALHUB_URL
+      value: $(params.evalhub-url)
+    - name: TENANT_NS
+      value: $(params.tenant-ns)
+    - name: JOB_NAME
+      value: $(params.job-name)
+    - name: AI_MODEL_URL
+      value: $(params.ai-model-url)
+    - name: AI_MODEL_NAME
+      value: $(params.ai-model-name)
+    - name: EXPERIMENT_TAG
+      value: $(params.experiment-tag)
+    - name: PROVIDER_ID
+      value: $(params.provider-id)
+    - name: PROVIDER_ID_BENCHMARK
+      value: $(params.provider-id-benchmark)
+    - name: EXPERIMENT_NAME
+      value: $(params.experiment-name)
+    - name: RESULTS_DIR
+      value: $(workspaces.results.path)
+    - name: JOB_ID_RESULT
+      value: $(results.job-id.path)
+    script: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      python3 - <<'PY'
+      import json, os, urllib.request
+      url = os.environ["EVALHUB_URL"].rstrip("/") + "/api/v1/health"
+      with urllib.request.urlopen(url, timeout=30) as resp:
+          body = json.loads(resp.read().decode())
+      print(json.dumps(body, indent=2))
+      PY
+      export TOKEN="$(oc get secret evalhub-api-token -n "${TENANT_NS}" -o jsonpath='{.data.token}' | base64 -d)"
+      pip install --quiet "eval-hub-sdk[client]"
+      python3 - <<'PY'
+      import os
+      from pathlib import Path
+
+      from evalhub import JobLogOptions, SyncEvalHubClient
+      from evalhub.models import (
+          BenchmarkConfig,
+          ExperimentConfig,
+          ExperimentTag,
+          JobSubmissionRequest,
+          ModelConfig,
+      )
+
+      provider = os.environ["PROVIDER_ID"]
+      benchmark_id = os.environ["PROVIDER_ID_BENCHMARK"]
+      experiment_name = (os.environ.get("EXPERIMENT_NAME") or "").strip()
+      if not experiment_name:
+          experiment_name = f"{os.environ['AI_MODEL_NAME']}-{benchmark_id}"
+
+      with SyncEvalHubClient(
+          base_url=os.environ["EVALHUB_URL"],
+          tenant=os.environ["TENANT_NS"],
+          auth_token=os.environ["TOKEN"],
+      ) as client:
+          job = client.jobs.submit(
+              JobSubmissionRequest(
+                  name=os.environ["JOB_NAME"],
+                  model=ModelConfig(
+                      url=os.environ["AI_MODEL_URL"],
+                      name=os.environ["AI_MODEL_NAME"],
+                  ),
+                  experiment=ExperimentConfig(
+                      name=experiment_name,
+                      tags=[ExperimentTag(key="model_name", value=os.environ["EXPERIMENT_TAG"])],
+                  ),
+                  benchmarks=[
+                      BenchmarkConfig(provider_id=provider, id=benchmark_id),
+                  ],
+              ),
+              tenant=os.environ["TENANT_NS"],
+          )
+          job_id = job.resource.id
+          Path(os.environ["JOB_ID_RESULT"]).write_text(job_id)
+          print(f"Job ID: {job_id}")
+
+          for update in client.jobs.watch_logs(
+              job_id,
+              options=JobLogOptions(tail_lines=500),
+              poll_interval=2.0,
+          ):
+              if update.logs:
+                  print(update.logs, end="")
+
+          finished = client.jobs.get(job_id)
+          out = Path(os.environ["RESULTS_DIR"]) / "evalhub-results.json"
+          out.write_text(finished.model_dump_json(indent=2) + "\n")
+          print(f"Wrote {out}")
+      PY
+
+  - name: fetch-results
+    image: $(params.image)
+    env:
+    - name: EVALHUB_URL
+      value: $(params.evalhub-url)
+    - name: TENANT_NS
+      value: $(params.tenant-ns)
+    - name: RESULTS_DIR
+      value: $(workspaces.results.path)
+    - name: JOB_ID_FILE
+      value: $(results.job-id.path)
+    - name: PASSED_RESULT
+      value: $(results.passed.path)
+    - name: RESULT_FILE_RESULT
+      value: $(results.result-file.path)
+    script: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      export TOKEN="$(oc get secret evalhub-api-token -n "${TENANT_NS}" -o jsonpath='{.data.token}' | base64 -d)"
+      python3 - <<'PY'
+      import json
+      import os
+      import sys
+      import urllib.request
+      from pathlib import Path
+
+      job_id = Path(os.environ["JOB_ID_FILE"]).read_text().strip()
+      url = os.environ["EVALHUB_URL"].rstrip("/") + f"/api/v1/evaluations/jobs/{job_id}"
+      req = urllib.request.Request(
+          url,
+          headers={
+              "Authorization": f"Bearer {os.environ['TOKEN']}",
+              "X-Tenant": os.environ["TENANT_NS"],
+          },
+      )
+      with urllib.request.urlopen(req, timeout=60) as resp:
+          payload = json.loads(resp.read().decode())
+
+      results = payload.get("results") or {}
+      out = Path(os.environ["RESULTS_DIR"]) / "evalhub-job-results.json"
+      out.write_text(json.dumps(results, indent=2) + "\n")
+      print(out.read_text())
+      Path(os.environ["RESULT_FILE_RESULT"]).write_text(str(out))
+
+      test = results.get("test") or {}
+      passed = bool(test.get("pass"))
+      Path(os.environ["PASSED_RESULT"]).write_text("true" if passed else "false")
+      print(
+          f"test.pass={passed} score={test.get('score')!r} "
+          f"threshold={test.get('threshold')!r}"
+      )
+      if not passed:
+          print("EvalHub benchmark failed: results.test.pass is false", file=sys.stderr)
+          sys.exit(1)
+      PY

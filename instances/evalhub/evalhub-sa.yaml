@@ -1,0 +1,38 @@
+# EvalHub  service account + API token 
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: evalhub-service-account
+  namespace: evalhub
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+    ai.security.pipeline/component: evalhub
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: evalhub-service-account
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+    ai.security.pipeline/component: evalhub
+subjects:
+  - kind: ServiceAccount
+    namespace: evalhub
+    name: evalhub-service-account
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: evalhub-api-token
+  namespace: evalhub
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+    ai.security.pipeline/component: evalhub
+  annotations:
+    kubernetes.io/service-account.name: evalhub-service-account
+type: kubernetes.io/service-account-token

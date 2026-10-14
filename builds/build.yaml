@@ -184,3 +184,26 @@ items:
         type: Docker
         dockerStrategy:
           dockerfilePath: Dockerfile
+  - apiVersion: image.openshift.io/v1
+    kind: ImageStream
+    metadata:
+      name: ai-security-evalhub-eval
+      labels:
+        app.kubernetes.io/part-of: ai-model-security-pipeline
+  - apiVersion: build.openshift.io/v1
+    kind: BuildConfig
+    metadata:
+      name: ai-security-evalhub-eval
+      labels:
+        app.kubernetes.io/part-of: ai-model-security-pipeline
+    spec:
+      output:
+        to:
+          kind: ImageStreamTag
+          name: ai-security-evalhub-eval:latest
+      source:
+        type: Binary
+      strategy:
+        type: Docker
+        dockerStrategy:
+          dockerfilePath: Dockerfile

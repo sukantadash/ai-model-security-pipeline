@@ -21,3 +21,4 @@ resources:
   - score-gate.yaml
   - archive-results.yaml
   - publish-artifact.yaml
+  - evalhub-benchmark.yaml

@@ -17,6 +17,7 @@ Built in the **`build-image`** namespace (no zone NetworkPolicy). Tekton tasks i
 | `ai-security-adversarial-test` | `builds/adversarial-test/` | Adversarial testing (prompt injection, jailbreak, harmful content/bias) |
 | `ai-security-score-gate` | `builds/score-gate/` | Weighted `S_total`, routing auto-pass/review/reject |
 | `ai-security-publish` | `builds/publish/` | MinIO promote + Model Registry |
+| `ai-security-evalhub-eval` | `builds/evalhub-eval` | For using evalhub |
 
 ## OpenShift build
 
@@ -24,7 +25,7 @@ Built in the **`build-image`** namespace (no zone NetworkPolicy). Tekton tasks i
 oc apply -k ./overlays/06-builds/
 oc apply -f quay-secret.yaml -n build-image
 oc secrets link builder sudash-modelpipeline-pull-secret -n build-image
-for bc in model-fetch static-scan dynamic-test capability-eval adversarial-test score-gate publish; do
+for bc in model-fetch static-scan dynamic-test capability-eval adversarial-test score-gate publish evalhub-eval; do
   oc start-build "ai-security-${bc}" --from-dir="builds/${bc}" --follow -n build-image
 done
 ```
