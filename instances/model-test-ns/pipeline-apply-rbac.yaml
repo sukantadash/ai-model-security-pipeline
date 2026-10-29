@@ -1,0 +1,47 @@
+# Eval pipeline SA applies verified LLMInferenceService (and its NeMo Guardrails) into this namespace on auto-pass.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: model-eval-pipeline-test-apply
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+rules:
+  - apiGroups: ["serving.kserve.io"]
+    resources: ["llminferenceservices", "llminferenceserviceconfigs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # publish-artifact applies overlays/16-test-serving (zone NetworkPolicies + LLMISConfig)
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "create", "update", "patch"]
+  # nemo-guardrails-test: NeMo Guardrails in front of the verified model
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list"]
+  - apiGroups: ["trustyai.opendatahub.io"]
+    resources: ["nemoguardrails"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # nemo-guardrails-deploy waits for / restarts the operator-created Deployment
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: model-eval-pipeline-test-apply
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: model-eval-pipeline-test-apply
+subjects:
+  - kind: ServiceAccount
+    name: model-eval-pipeline
+    namespace: model-eval

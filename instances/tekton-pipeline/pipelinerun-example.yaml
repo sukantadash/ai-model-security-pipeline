@@ -1,12 +1,16 @@
-# Example PipelineRun for RedHatAI/Qwen3-8B-FP8-dynamic — edit model-id if needed, then:
+# Example PipelineRun for RedHatAI/Qwen3-8B-FP8-dynamic — edit model-id / serving-yaml
+# for other models, then:
 #   oc create -f instances/tekton-pipeline/pipelinerun-example.yaml
 #
 # Prerequisites:
-#   - model-fetch Job completed (MinIO models-ingress/redhatai-qwen3-8b-fp8-dynamic/)
-#   - minio-s3 secret in model-eval and model-sandbox
+#   - model-fetch Job completed
+#     (pushed quay.io/sudash/ai-model-security-pipeline:<model-id>-unverified)
+#   - Quay pull secret in model-eval + model-sandbox + model-test
 #   - oc apply -k instances/model-sandbox/ (namespace persists)
-#   - Scanner + publish images built (Phase 5)
+#   - Scanner + publish images built (Phase 3); rebuild publish after ModelCar changes
+#   - TrustyAI NemoGuardrails CRD present (trustyai: Managed) unless nemo-guardrails-enabled=false
 #   - git-url reachable from model-eval (HTTPS)
+#   - modelcar-image must match Job MODELCAR_IMAGE (shared repo)
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
@@ -21,14 +25,21 @@ spec:
   params:
     - name: model-id
       value: redhatai-qwen3-8b-fp8-dynamic
+    - name: modelcar-image
+      value: quay.io/sudash/ai-model-security-pipeline
     - name: model-path
       value: /workspace/models
     - name: git-url
       value: https://github.com/sukantadash/ai-model-security-pipeline.git
+    - name: git-revision
+      value: main
     - name: model-sandbox-path
-      value: instances/model-sandbox
-    - name: model-test-path
-      value: instances/model-test
+      value: instances/model-sandbox/LLMInferenceService.yaml
+    - name: serving-yaml
+      value: instances/model-test/qwen3-8b-fp8-verified.yaml
+    # NeMo Guardrails (TrustyAI, Tech Preview): sandbox probes + guarded model-test serving
+    - name: nemo-guardrails-enabled
+      value: 'true'
   workspaces:
     - name: shared-data
       persistentVolumeClaim:

@@ -8,26 +8,24 @@ from pathlib import Path
 
 import yaml
 
-from patch_llmis import find_llmis_files, patch_path
+from patch_llmis import llmis_name, patch_path
 
 
 SAMPLE = """
 apiVersion: serving.kserve.io/v1alpha1
 kind: LLMInferenceService
 metadata:
-  name: PLACEHOLDER
+  name: eval-sandbox
   namespace: model-sandbox
-  annotations:
-    openshift.io/display-name: PLACEHOLDER
 spec:
   model:
-    uri: s3://models-ingress/PLACEHOLDER/
-    name: PLACEHOLDER
+    uri: oci://PLACEHOLDER
+    name: redhatai-qwen3-8b-fp8-dynamic
 """
 
 
 class PatchLlmisTest(unittest.TestCase):
-    def test_patch_name_and_uri(self) -> None:
+    def test_uri_only_keeps_name(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             src = Path(tmp) / "LLMInferenceService.yaml"
             dest = Path(tmp) / "out.yaml"
@@ -35,80 +33,60 @@ class PatchLlmisTest(unittest.TestCase):
             n = patch_path(
                 src,
                 dest,
-                name="eval-abcde",
-                model_name="redhatai-qwen3-8b-fp8-dynamic",
-                model_uri="s3://models-ingress/redhatai-qwen3-8b-fp8-dynamic/",
+                model_uri="oci://quay.io/sudash/ai-model-security-pipeline:redhatai-qwen3-8b-fp8-dynamic-unverified",
                 namespace="model-sandbox",
             )
             self.assertEqual(n, 1)
             doc = yaml.safe_load(dest.read_text())
-            self.assertEqual(doc["metadata"]["name"], "eval-abcde")
+            self.assertEqual(doc["metadata"]["name"], "eval-sandbox")
             self.assertEqual(doc["spec"]["model"]["name"], "redhatai-qwen3-8b-fp8-dynamic")
             self.assertEqual(
                 doc["spec"]["model"]["uri"],
-                "s3://models-ingress/redhatai-qwen3-8b-fp8-dynamic",
+                "oci://quay.io/sudash/ai-model-security-pipeline:redhatai-qwen3-8b-fp8-dynamic-unverified",
             )
-            self.assertEqual(doc["metadata"]["annotations"]["openshift.io/display-name"], "eval-abcde")
+            self.assertEqual(doc["metadata"]["namespace"], "model-sandbox")
 
-    def test_uri_only_keeps_template_names(self) -> None:
+    def test_verified_uri_replace(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            src = Path(tmp) / "qwen.yaml"
+            src = Path(tmp) / "qwen3-8b-fp8-verified.yaml"
             dest = Path(tmp) / "out.yaml"
             src.write_text(
                 """
-apiVersion: serving.kserve.io/v1alpha1
+apiVersion: serving.kserve.io/v1alpha2
 kind: LLMInferenceService
 metadata:
   name: qwen3-8b-fp8
-  annotations:
-    openshift.io/display-name: qwen3-8b-fp8-verified
-    security.platform/model-version: PLACEHOLDER
 spec:
   model:
-    uri: s3://models-verified/redhatai-qwen3-8b-fp8-dynamic/PLACEHOLDER
+    uri: oci://PLACEHOLDER
     name: redhatai-qwen3-8b-fp8-dynamic
 """
             )
             n = patch_path(
                 src,
                 dest,
-                name=None,
-                model_name=None,
-                model_uri="s3://models-verified/redhatai-qwen3-8b-fp8-dynamic/9djp2",
-                namespace="model-test",
-                model_version="9djp2",
-                registered_model="redhatai-qwen3-8b-fp8-dynamic",
+                model_uri="oci://quay.io/sudash/ai-model-security-pipeline:redhatai-qwen3-8b-fp8-dynamic-verified-87-9djp2",
             )
             self.assertEqual(n, 1)
             doc = yaml.safe_load(dest.read_text())
             self.assertEqual(doc["metadata"]["name"], "qwen3-8b-fp8")
-            self.assertEqual(doc["spec"]["model"]["name"], "redhatai-qwen3-8b-fp8-dynamic")
             self.assertEqual(
                 doc["spec"]["model"]["uri"],
-                "s3://models-verified/redhatai-qwen3-8b-fp8-dynamic/9djp2",
-            )
-            self.assertEqual(doc["metadata"]["namespace"], "model-test")
-            self.assertEqual(
-                doc["metadata"]["annotations"]["openshift.io/display-name"],
-                "redhatai-qwen3-8b-fp8-dynamic - 9djp2",
-            )
-            self.assertEqual(doc["metadata"]["annotations"]["security.platform/model-version"], "9djp2")
-            self.assertEqual(
-                doc["metadata"]["annotations"]["opendatahub.io/connection-path"],
-                "redhatai-qwen3-8b-fp8-dynamic/9djp2",
-            )
-            self.assertEqual(
-                doc["metadata"]["annotations"]["opendatahub.io/connections"],
-                "redhatai-qwen3-8b-fp8-dynamic-9djp2",
+                "oci://quay.io/sudash/ai-model-security-pipeline:redhatai-qwen3-8b-fp8-dynamic-verified-87-9djp2",
             )
 
-    def test_find_under_dir(self) -> None:
+    def test_llmis_name(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            (root / "LLMInferenceService.yaml").write_text(SAMPLE)
-            (root / "networkpolicy.yaml").write_text("kind: NetworkPolicy\nmetadata:\n  name: x\n")
-            found = find_llmis_files(root)
-            self.assertEqual([p.name for p in found], ["LLMInferenceService.yaml"])
+            src = Path(tmp) / "svc.yaml"
+            src.write_text(SAMPLE)
+            self.assertEqual(llmis_name(src), "eval-sandbox")
+
+    def test_requires_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            src = Path(tmp) / "missing.yaml"
+            dest = Path(tmp) / "out.yaml"
+            with self.assertRaises(FileNotFoundError):
+                patch_path(src, dest, model_uri="oci://x:unverified")
 
 
 if __name__ == "__main__":

@@ -5,8 +5,7 @@ metadata:
   namespace: kuadrant-system
 spec:
   channel: stable
-  installPlanApproval: Manual
+  installPlanApproval: Automatic
   name: rhcl-operator
   source: redhat-operators
   sourceNamespace: openshift-marketplace
-  startingCSV: rhcl-operator.v1.3.3

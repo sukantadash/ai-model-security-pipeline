@@ -66,3 +66,29 @@ spec:
     value: unit-test
   - name: pipeline-run-name
     value: model-security-unit1
+---
+# Fixture ConfigMap:
+#   oc create configmap fixture-adversarial-nemo-guardrails -n model-eval \
+#     --from-file=builds/adversarial-test/testdata/nemo-guardrails/nemo-guardrails-probes.json
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: unit-adversarial-nemo-guardrails-
+  labels:
+    test: adversarial-test-unit
+    ai.security.pipeline/stage: adversarial-test
+spec:
+  serviceAccountName: model-eval-pipeline
+  taskRef:
+    name: adversarial-test-nemo-guardrails
+  workspaces:
+  - name: models
+    configMap:
+      name: fixture-adversarial-nemo-guardrails
+  - name: results
+    emptyDir: {}
+  params:
+  - name: model-id
+    value: unit-test
+  - name: pipeline-run-name
+    value: model-security-unit1

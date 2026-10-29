@@ -9,3 +9,4 @@ resources:
   - namespace.yaml
   - networkpolicy.yaml
   - rbac.yaml
+  - nemo-guardrails-serviceaccount.yaml

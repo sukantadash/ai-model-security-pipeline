@@ -8,5 +8,9 @@ spec:
   params:
     - name: model-id
       value: $(body.model_id)
+    - name: modelcar-image
+      value: $(body.modelcar_image)
+    - name: serving-yaml
+      value: $(body.serving_yaml)
     - name: model-path
       value: /workspace/models

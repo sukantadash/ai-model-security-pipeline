@@ -2,7 +2,6 @@
 quay-secret.yaml
 minio-s3-secret.yaml
 instances/model-test/model-connection-secret.yaml
-instances/model-test/qwen3-8b-fp8-verified.yaml
 
 # Python
 __pycache__/
@@ -15,3 +14,7 @@ __pycache__/
 .unit-out/
 .vscode/
 reference/
+
+.env
+.last-pipelinerun
+debug-*.log

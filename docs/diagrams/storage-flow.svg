@@ -46,7 +46,7 @@
 <rect x="40" y="468" width="1360" height="36" rx="4" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
 <text x="52" y="492" fill="#151515" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">capability-quality.json  |  capability-performance-cost.json  |  capability-stability.json  |  capability-anomaly-bias.json  -&gt;  capability.json</text>
 <rect x="40" y="512" width="1360" height="36" rx="4" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
-<text x="52" y="536" fill="#151515" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">adversarial-prompt-injection.json  |  adversarial-jailbreak-*.json  |  adversarial-harmful-*.json  -&gt;  adversarial-test.json</text>
+<text x="52" y="536" fill="#151515" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">adversarial-prompt-injection.json  |  -jailbreak-*  |  -harmful-*  |  -nemo-guardrails.json  -&gt;  adversarial-test.json</text>
 <rect x="40" y="556" width="1360" height="36" rx="4" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
 <text x="52" y="580" fill="#151515" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">score.json   publish.json   manifest.json</text>
 <text x="40" y="620" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Buckets (anonymous=none): models-ingress, models-eval, models-verified, attestations. Scanner images live in the image registry / Quay, not MinIO.</text>

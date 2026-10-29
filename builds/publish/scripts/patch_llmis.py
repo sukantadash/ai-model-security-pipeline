@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Patch LLMInferenceService YAML: metadata.name, spec.model.name, spec.model.uri."""
+"""Replace placeholder image URI in an LLMInferenceService YAML file.
+
+Only updates spec.model.uri. Callers own metadata.name and all other fields.
+Expects a single file path (not a directory of templates).
+"""
 from __future__ import annotations
 
 import argparse
@@ -13,7 +17,6 @@ except ImportError:  # pragma: no cover
     print("PyYAML is required (pip install pyyaml)", file=sys.stderr)
     raise SystemExit(2)
 
-
 def load_docs(path: Path) -> list:
     text = path.read_text()
     docs = list(yaml.safe_load_all(text))
@@ -24,86 +27,29 @@ def is_llmis(doc: dict) -> bool:
     return isinstance(doc, dict) and str(doc.get("kind") or "") == "LLMInferenceService"
 
 
-def patch_doc(
-    doc: dict,
-    *,
-    name: str | None,
-    model_name: str | None,
-    model_uri: str,
-    namespace: str | None,
-    model_version: str | None = None,
-    registered_model: str | None = None,
-) -> dict:
+def patch_doc(doc: dict, *, model_uri: str, namespace: str | None = None) -> dict:
     out = copy.deepcopy(doc)
-    meta = out.setdefault("metadata", {})
-    if name:
-        meta["name"] = name
     if namespace:
-        meta["namespace"] = namespace
-    ann = meta.setdefault("annotations", {})
-    if name and "openshift.io/display-name" in ann:
-        ann["openshift.io/display-name"] = name
-    if model_version:
-        ann["security.platform/model-version"] = model_version
-    reg_model = registered_model or model_name
-    if reg_model and model_version:
-        ann["opendatahub.io/connection-path"] = f"{reg_model}/{model_version}"
-        ann["opendatahub.io/connections"] = f"{reg_model}-{model_version}"
-        ann["openshift.io/display-name"] = f"{reg_model} - {model_version}"
-        ann.setdefault("security.platform/registered-model", reg_model)
+        out.setdefault("metadata", {})["namespace"] = namespace
     spec = out.setdefault("spec", {})
     model = spec.setdefault("model", {})
-    if model_name:
-        model["name"] = model_name
     model["uri"] = model_uri.rstrip("/")
     return out
-
-
-def find_llmis_files(root: Path) -> list[Path]:
-    if root.is_file():
-        return [root]
-    found = []
-    for path in sorted(root.rglob("*")):
-        if path.suffix.lower() not in {".yaml", ".yml"}:
-            continue
-        if path.name == "kustomization.yaml":
-            continue
-        try:
-            docs = load_docs(path)
-        except yaml.YAMLError:
-            continue
-        if any(is_llmis(d) for d in docs):
-            found.append(path)
-    return found
 
 
 def patch_path(
     src: Path,
     dest: Path,
     *,
-    name: str | None,
-    model_name: str | None,
     model_uri: str,
-    namespace: str | None,
-    model_version: str | None = None,
-    registered_model: str | None = None,
+    namespace: str | None = None,
 ) -> int:
     docs = load_docs(src)
     patched = 0
     out_docs = []
     for doc in docs:
         if is_llmis(doc):
-            out_docs.append(
-                patch_doc(
-                    doc,
-                    name=name,
-                    model_name=model_name,
-                    model_uri=model_uri,
-                    namespace=namespace,
-                    model_version=model_version,
-                    registered_model=registered_model,
-                )
-            )
+            out_docs.append(patch_doc(doc, model_uri=model_uri, namespace=namespace))
             patched += 1
         else:
             out_docs.append(doc)
@@ -115,47 +61,47 @@ def patch_path(
     return patched
 
 
+def llmis_name(src: Path) -> str:
+    for doc in load_docs(src):
+        if is_llmis(doc):
+            name = (doc.get("metadata") or {}).get("name")
+            if name:
+                return str(name)
+    raise SystemExit(f"LLMInferenceService missing metadata.name in {src}")
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("src", help="File or directory containing LLMInferenceService YAML")
-    p.add_argument("--out-dir", required=True, help="Directory to write patched YAML")
-    p.add_argument("--name", default="", help="metadata.name (omit to keep template name)")
-    p.add_argument("--model-name", default="", help="spec.model.name (omit to keep template name)")
-    p.add_argument("--model-uri", required=True, help="spec.model.uri")
-    p.add_argument("--namespace", default="", help="metadata.namespace (optional)")
-    p.add_argument("--model-version", default="", help="annotation security.platform/model-version")
+    p.add_argument("src", help="Path to LLMInferenceService YAML file")
+    p.add_argument("--out-dir", default="", help="Directory to write patched YAML")
+    p.add_argument("--model-uri", default="", help="Replacement for spec.model.uri")
+    p.add_argument("--namespace", default="", help="Optional metadata.namespace override")
     p.add_argument(
-        "--registered-model",
-        default="",
-        help="registered model id for ODH connection-path/connections annotations",
+        "--print-name",
+        action="store_true",
+        help="Print metadata.name of the first LLMInferenceService to stdout and exit",
     )
     args = p.parse_args()
     src = Path(args.src)
-    if not src.exists():
-        print(f"path not found: {src}", file=sys.stderr)
+    if not src.is_file():
+        print(f"serving YAML must be a file: {src}", file=sys.stderr)
         return 1
-    files = find_llmis_files(src)
-    if not files:
-        print(f"no LLMInferenceService YAML under {src}", file=sys.stderr)
-        return 1
+    if args.print_name:
+        print(llmis_name(src), end="")
+        return 0
+    if not args.out_dir or not args.model_uri:
+        print("--out-dir and --model-uri are required unless --print-name", file=sys.stderr)
+        return 2
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    ns = args.namespace or None
-    total = 0
-    for path in files:
-        dest = out_dir / path.name
-        total += patch_path(
-            path,
-            dest,
-            name=args.name or None,
-            model_name=args.model_name or None,
-            model_uri=args.model_uri,
-            namespace=ns,
-            model_version=args.model_version or None,
-            registered_model=args.registered_model or None,
-        )
-        print(f"patched {path} -> {dest}")
-    print(f"patched {total} LLMInferenceService document(s)")
+    dest = out_dir / src.name
+    n = patch_path(
+        src,
+        dest,
+        model_uri=args.model_uri,
+        namespace=args.namespace or None,
+    )
+    print(f"patched {src} -> {dest} ({n} LLMInferenceService)")
     return 0
 
 

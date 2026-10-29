@@ -13,8 +13,8 @@
 |---------|-------------------|-----------|
 | `model-ingress` | Untrusted intake | Fetch Job, Envoy, ingress PVC/S3 client |
 | `model-eval` | Pipeline sandbox | PipelineRuns, Tasks, score-gate, publish |
-| `model-sandbox` | Untrusted eval vLLM | Persistent NS; CR applied by `serve-llm-start`, deleted by `serve-llm-stop` |
-| `model-test` | Verified serving | KServe / vLLM after auto-pass |
+| `model-sandbox` | Untrusted eval vLLM | Persistent NS; CR applied by `serve-llm-start`, deleted by `serve-llm-stop`. Per-run `NemoGuardrails` CR (`nemo-guardrails-start` / `-stop`) |
+| `model-test` | Verified serving | KServe / vLLM after auto-pass, behind `NemoGuardrails` `nemo-guardrails` (auth on) |
 | `model-prod` | Later | Manual promotion only |
 | `minio-system` | Object store | MinIO API :9000, console Route |
 | `build-image` | Image builds | BuildConfigs — **no zone NetworkPolicy** |
@@ -31,6 +31,15 @@ All three zone policies: default deny Ingress+Egress, then allow same-namespace 
 | Test | `0.0.0.0/0:443` (Quay); **not** intended for HF Hub | Same-namespace + `openshift-ingress` |
 
 Eval comment in YAML: no general public internet — Quay + cluster services. The catch-all `:443` ipBlock is the practical hole for Quay; tighten if the cluster can pin Quay CIDRs.
+
+### NeMo Guardrails traffic
+
+No new NetworkPolicy rules are needed:
+
+- `model-eval` → NeMo pod in `model-sandbox` on pod port 8000 (existing sandbox-zone rule).
+- NeMo → vLLM inside the same namespace (same-namespace rule) in both `model-sandbox` and `model-test`.
+- The operator-created Route in `model-sandbox` cannot be reached, because the sandbox does not admit `openshift-ingress`. The Route in `model-test` can be reached and is protected by kube-rbac-proxy.
+- The `nemo-guardrails-deploy` / `-delete` Task pods carry `ai.security.pipeline/stage: nemo-guardrails` and are added to `pipeline-oc-allow-kube-apiserver-taskruns` so `oc` can reach the API.
 
 ## Isolation controls
 

@@ -46,10 +46,10 @@
 <text x="710" y="232" fill="#0066CC" font-size="11" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">35% of S_total</text>
 <rect x="876" y="160" width="148" height="92" rx="6" fill="#E7F1FA" stroke="#0066CC" stroke-width="1"/>
 <text x="886" y="182" fill="#151515" font-size="13" font-weight="700" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Adversarial</text>
-<text x="886" y="202" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Injection, jailbreak, harm</text>
+<text x="886" y="202" fill="#6A6E73" font-size="10" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">Injection, jailbreak, NeMo</text>
 <text x="886" y="232" fill="#0066CC" font-size="11" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">25% of S_total</text>
 <rect x="348" y="268" width="676" height="168" rx="8" fill="#F5F5F5" stroke="#D2D2D2" stroke-width="1"/>
-<text x="368" y="296" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">DAG: fetch -&gt; static(3) -&gt; dynamic(4) -&gt; capability(4) -&gt; adversarial(3) -&gt; gate</text>
+<text x="368" y="296" fill="#151515" font-size="12" font-weight="600" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">DAG: fetch -&gt; static(3) -&gt; dynamic(4) -&gt; capability(4) -&gt; adversarial(4) -&gt; gate</text>
 <text x="368" y="318" fill="#6A6E73" font-size="12" font-weight="400" text-anchor="start" font-family="system-ui, -apple-system, Segoe UI, sans-serif">S_total = 0.40*S_static + 0.35*S_capability + 0.25*S_redteam</text>
 <rect x="368" y="338" width="200" height="76" rx="6" fill="#3E8635" stroke="#3E8635" stroke-width="0"/>
 <text x="468" y="368" fill="#fff" font-size="14" font-weight="700" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif">&gt;= 75  Auto-pass</text>

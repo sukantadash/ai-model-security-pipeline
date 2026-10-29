@@ -1,0 +1,28 @@
+# Sync wave 12 — RHOAI dashboard + Model Registry (script.sh Phase 11).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ai-sec-12-rhoai-dashboard
+  namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+  annotations:
+    argocd.argoproj.io/sync-wave: "12"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io/argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/sukantadash/ai-model-security-pipeline.git
+    targetRevision: main
+    path: overlays/12-rhoai-dashboard
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: redhat-ods-applications
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - SkipDryRunOnMissingResource=true
+    automated:
+      prune: true
+      selfHeal: true

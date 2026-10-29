@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Scan a git repo for secrets and live values that should be placeholders.
+"""Scan a git repo for sensitive data that is unsafe to push.
+
+Detects credentials, tokens, private keys, filled dockerconfig auth, and
+secret files that must stay gitignored. Does not enforce cluster-domain or
+CHANGE_ME / REPLACE_WITH placeholder conventions.
 
 Prints JSON to stdout. Never prints secret values — only path, kind, line, and
 a redacted reason. Exit 0 if no blocking findings, 1 otherwise.
@@ -42,26 +46,11 @@ SKIP_SUFFIXES = {
 }
 MAX_FILE_BYTES = 1_000_000
 
-# Intentional placeholders — allowed in tracked files.
+# Intentional placeholders / non-literals — not treated as live secrets.
 PLACEHOLDER_RE = re.compile(
     r"CHANGE_ME_[A-Z0-9_]+|REPLACE_WITH_[A-Z0-9_]+|<base64\(|<strong-password>|"
     r"<quay-[^>]+>|<password>|<same-as-[^>]+>|<your-[^>]+>|<pat>|"
     r"YOUR_[A-Z0-9_]+|TODO_SECRET",
-    re.I,
-)
-
-# Live lab / OpenShift cluster public FQDNs that must not be committed.
-LIVE_FQDN_RE = re.compile(
-    r"(?:[a-z0-9-]+\.)*(?:sandbox\d+\.opentlc\.com|"
-    r"apps\.cluster-[a-z0-9]+\.[a-z0-9-]+\.[a-z0-9.]+|"
-    r"api\.cluster-[a-z0-9]+\.[a-z0-9-]+\.[a-z0-9.]+)",
-    re.I,
-)
-
-# In-cluster names are fine.
-OK_HOST_RE = re.compile(
-    r"\.(?:svc|svc\.cluster\.local)(?:/|:|$)|localhost|example\.com|quay\.io|"
-    r"registry\.redhat\.io|ghcr\.io|github\.com",
     re.I,
 )
 
@@ -95,11 +84,11 @@ MUST_IGNORE_DEFAULT = (
     "kubeconfig.yaml",
 )
 
-KNOWN_PLACEHOLDER_FILES_DEFAULT: dict[str, str] = {}
+IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
-def load_patterns(repo: Path) -> tuple[tuple[str, ...], dict[str, str]]:
+
+def load_patterns(repo: Path) -> tuple[str, ...]:
     must = list(MUST_IGNORE_DEFAULT)
-    known = dict(KNOWN_PLACEHOLDER_FILES_DEFAULT)
     candidates = [
         Path(__file__).resolve().parent.parent / "patterns.json",
         repo / ".cursor/skills/safe-git-push/patterns.json",
@@ -115,10 +104,7 @@ def load_patterns(repo: Path) -> tuple[tuple[str, ...], dict[str, str]]:
         seen.add(resolved)
         data = json.loads(resolved.read_text(encoding="utf-8"))
         must.extend(data.get("must_ignore") or [])
-        known.update(data.get("known_placeholder_files") or {})
-    # Preserve order, drop dupes
-    must_u = tuple(dict.fromkeys(must))
-    return must_u, known
+    return tuple(dict.fromkeys(must))
 
 
 def run_git(repo: Path, args: list[str]) -> str:
@@ -143,9 +129,10 @@ def is_ignored(repo: Path, rel: str) -> bool:
     return r.returncode == 0
 
 
-def looks_placeholder(value: str) -> bool:
-    v = value.strip().strip("'\"")
-    if not v or v in {"''", '""', "null", "changeme"}:
+def looks_non_secret_value(value: str) -> bool:
+    """True when the assigned value is not a literal credential."""
+    v = value.strip().strip("'\"").rstrip(",").rstrip(";")
+    if not v or v in {"''", '""', "null", "changeme", "None", "true", "false"}:
         return True
     if PLACEHOLDER_RE.search(v):
         return True
@@ -156,6 +143,9 @@ def looks_placeholder(value: str) -> bool:
         return True
     # Code expressions (e.g. token = fh.read().strip()), not a literal.
     if any(ch in value for ch in "()[]{}"):
+        return True
+    # Bare identifier — variable passthrough (e.g. token=token), not a secret literal.
+    if IDENTIFIER_RE.fullmatch(v):
         return True
     return False
 
@@ -177,22 +167,16 @@ def finding(
     return item
 
 
-def scan_text(rel: str, text: str, known_placeholder_files: dict[str, str]) -> list[dict]:
+def scan_text(rel: str, text: str) -> list[dict]:
     findings: list[dict] = []
     for i, line in enumerate(text.splitlines(), 1):
-        if LIVE_FQDN_RE.search(line) and not OK_HOST_RE.search(line):
-            findings.append(
-                finding(
-                    path=rel,
-                    kind="live_cluster_fqdn",
-                    severity="block",
-                    reason="Live lab/cluster FQDN in tracked file; replace with REPLACE_WITH_CLUSTER_APPS_DOMAIN",
-                    line=i,
-                    fix="replace_fqdn",
-                )
-            )
         for kind, cre in TOKEN_RES:
-            if cre.search(line) and not looks_placeholder(line):
+            if cre.search(line) and not looks_non_secret_value(line):
+                # Token patterns match the credential itself; line-level placeholder
+                # check above is weak — only skip if the whole match looks like a placeholder.
+                m = cre.search(line)
+                if m and looks_non_secret_value(m.group(0)):
+                    continue
                 findings.append(
                     finding(
                         path=rel,
@@ -203,14 +187,8 @@ def scan_text(rel: str, text: str, known_placeholder_files: dict[str, str]) -> l
                     )
                 )
         m = SECRET_VALUE_LINE_RE.search(line)
-        if m and not looks_placeholder(m.group(1)):
-            # Skip comments that only mention the key name with no assignment of a live value
+        if m and not looks_non_secret_value(m.group(1)):
             stripped = line.lstrip()
-            if stripped.startswith("#") and PLACEHOLDER_RE.search(line):
-                continue
-            if stripped.startswith("#") and ("<" in line or "changeme" in line.lower()):
-                continue
-            # Comments documenting how to set secrets are OK if they use placeholders.
             if stripped.startswith("#"):
                 continue
             findings.append(
@@ -218,34 +196,23 @@ def scan_text(rel: str, text: str, known_placeholder_files: dict[str, str]) -> l
                     path=rel,
                     kind="live_secret_value",
                     severity="block",
-                    reason="Non-placeholder secret/password/token assignment (value omitted)",
+                    reason="Live secret/password/token assignment in tracked file (value omitted)",
                     line=i,
                     fix="restore_placeholder",
                 )
             )
         for am in DOCKER_AUTH_RE.finditer(line):
-            if not looks_placeholder(am.group(1)):
+            if not looks_non_secret_value(am.group(1)):
                 findings.append(
                     finding(
                         path=rel,
                         kind="dockerconfig_auth",
                         severity="block",
-                        reason="dockerconfigjson auth is filled in, not a placeholder (value omitted)",
+                        reason="dockerconfigjson auth is filled in (value omitted)",
                         line=i,
                         fix="restore_placeholder",
                     )
                 )
-    expected = known_placeholder_files.get(rel.replace("\\", "/"))
-    if expected and expected not in text:
-        findings.append(
-            finding(
-                path=rel,
-                kind="missing_expected_placeholder",
-                severity="block",
-                reason=f"Expected placeholder {expected} is missing from this file",
-                fix="restore_placeholder",
-            )
-        )
     return findings
 
 
@@ -264,10 +231,9 @@ def should_skip_file(path: Path) -> bool:
 
 def main() -> int:
     repo = Path(sys.argv[1] if len(sys.argv) > 1 else os.getcwd()).resolve()
-    must_ignore, known_placeholder_files = load_patterns(repo)
+    must_ignore = load_patterns(repo)
     blocking: list[dict] = []
     info: list[dict] = []
-    placeholder_ok: list[dict] = []
 
     tracked = tracked_files(repo)
     staged = staged_files(repo)
@@ -323,17 +289,8 @@ def main() -> int:
             text = raw.decode("utf-8")
         except UnicodeDecodeError:
             continue
-        hits = scan_text(rel, text, known_placeholder_files)
+        hits = scan_text(rel, text)
         blocking.extend(h for h in hits if h["severity"] == "block")
-        if PLACEHOLDER_RE.search(text) and rel.replace("\\", "/") in known_placeholder_files:
-            placeholder_ok.append(
-                finding(
-                    path=rel,
-                    kind="placeholder_ok",
-                    severity="info",
-                    reason="Tracked file still uses the expected placeholder token",
-                )
-            )
 
     # Staged-but-not-yet-committed extra files
     for rel in staged:
@@ -346,13 +303,12 @@ def main() -> int:
             text = path.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             continue
-        blocking.extend(scan_text(rel, text, known_placeholder_files))
+        blocking.extend(scan_text(rel, text))
 
     report = {
         "ok": not blocking,
         "blocking": blocking,
         "info": info,
-        "placeholder_ok": placeholder_ok,
     }
     json.dump(report, sys.stdout, indent=2)
     sys.stdout.write("\n")

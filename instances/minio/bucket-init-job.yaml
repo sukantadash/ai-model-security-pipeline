@@ -12,8 +12,8 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: mc
-          # mc tags on quay.io differ from minio/minio — pin a tag that exists on Quay.
-          image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+          # quay.io/minio/mc no longer allows anonymous pulls — use pgsty/mc.
+          image: docker.io/pgsty/mc:RELEASE.2026-09-16T00-00-00Z
           env:
             # OpenShift runs with random UID — /.mc is not writable.
             - name: MC_CONFIG_DIR

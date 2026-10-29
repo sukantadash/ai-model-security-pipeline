@@ -31,6 +31,13 @@ CHECKS = {
         "risk": "high",
         "tool_used": "llm-guard",
     },
+    "adversarial-nemo-guardrails.json": {
+        "subtask": "nemo-guardrails",
+        "min_findings": 1,
+        "issue_contains": "nemo guardrails block rate",
+        "risk": "high",
+        "tool_used": "nemo-guardrails",
+    },
 }
 
 

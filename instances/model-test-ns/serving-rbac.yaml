@@ -1,0 +1,60 @@
+# Test ServiceAccount for gateway and NeMo Guardrails smoke tests in model-test.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: test-user
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: llm-inferenceservice-reader
+rules:
+  - apiGroups: ["serving.kserve.io"]
+    resources: ["llminferenceservices"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: llm-inferenceservice-reader-binding
+subjects:
+  - kind: ServiceAccount
+    name: test-user
+roleRef:
+  kind: Role
+  name: llm-inferenceservice-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+# Callers of the authenticated NeMo Guardrails route (CR nemo-guardrails, enable-auth=true).
+# The operator's kube-rbac-proxy config asks for "get services" with
+# resourceName: <cr>-service, but kube-rbac-proxy reads that field as `name`, so the
+# name is dropped and the check becomes "get services" in this namespace. A role
+# limited by resourceNames is therefore denied (403) even though
+# `oc auth can-i get services/<cr>-service` says yes. Grant namespace-wide get on
+# Services (read-only, model-test only).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: nemo-guardrails-user
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+    ai.security.pipeline/component: nemo-guardrails
+rules:
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: nemo-guardrails-user-binding
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+    ai.security.pipeline/component: nemo-guardrails
+subjects:
+  - kind: ServiceAccount
+    name: test-user
+roleRef:
+  kind: Role
+  name: nemo-guardrails-user
+  apiGroup: rbac.authorization.k8s.io

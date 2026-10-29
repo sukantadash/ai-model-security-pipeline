@@ -1,46 +1,39 @@
-# Test zone — verified model serving after pipeline pass (registry-aligned).
-# Promotion from model-test to model-prod is a later manual process.
+# Test zone — verified model serving after pipeline pass
 
 All serving manifests live in this directory (no subfolders).
 
-- **Phase 2 (overlay `04-zones`):** `namespace.yaml` via `overlays/04-zones/model-test/` (kustomize requires it under the overlay tree; keep both namespace copies in sync).
-- **Phase 15 (overlay `16-test-serving`):** network policies, RBAC, `LLMInferenceServiceConfig`, ODH connection secret, verified `LLMInferenceService`.
+- **Phase 2 (overlay `04-zones`):** `namespace.yaml` via `overlays/04-zones/model-test/`
+- **Overlay `16-test-serving`:** network policies + `LLMInferenceServiceConfig` — applied by **`publish-artifact`** (and still available as a one-shot `oc apply -k overlays/16-test-serving/` for bootstrap)
+- **Verified `LLMInferenceService`:** applied by `publish-artifact` (not kustomize / not Argo autosync)
 
-Deploy **after** a model passes `model-security-pipeline` in `model-eval`.
+## ModelCar + placeholder image
 
-## Alignment with Model Registry deploy
+Committed example: [`qwen3-8b-fp8-verified.yaml`](qwen3-8b-fp8-verified.yaml) with `spec.model.uri: oci://PLACEHOLDER`.
 
-The RHOAI dashboard deploys from Model Registry into `minio-system` with:
+PipelineRun params:
 
-- `LLMInferenceServiceConfig` + `baseRefs` (vLLM CUDA runtime)
-- `opendatahub.io/connection-path` / `opendatahub.io/connections` → per-version S3 secret
-- `spec.model.uri` → `s3://models-verified/<registered-model>/<version>` (no trailing slash)
-- `spec.model.name` → registered model id (not Hugging Face name)
-- Preset router (`gateway` + `route` only — no custom scheduler block)
+- `model-id` / `modelcar-image` — must match the model-fetch Job
+- `serving-yaml` — path to this file (or another model’s YAML)
 
-`model-test` mirrors that pattern and adds `gpu-profile`, security annotations, and gateway name `qwen3-8b-fp8`.
+On auto-pass / review, `publish-artifact`:
 
-## Prerequisites (overlays 11–15)
+1. Retags ModelCar `:unverified` → `:verified-<score>-<VERSION>`
+2. Registers Model Registry with `oci://…`
+3. Applies `overlays/16-test-serving` (`LLMInferenceServiceConfig` + NetworkPolicies) so `baseRefs` resolve
+4. Replaces **only** the placeholder URI in `serving-yaml` and `oc apply`s it in `model-test`
 
-Apply the RHOAI inference platform before verified model serving (see `script.sh` Phases 11–14).
+No `.yaml.template` and no rewriting of names or ODH connection annotations.
 
-## After publish-artifact
+## NeMo Guardrails
 
-1. Read `publish.json` from `s3://models-eval/<model-id>/<version>/scan-result/` or task logs.
-2. Update manifests (or let `publish-artifact` patch from git) — version token is `PLACEHOLDER` in Git:
-   - `MODEL_CONN_NAME` → `redhatai-qwen3-8b-fp8-dynamic-<version>` (`opendatahub.io/connections`)
-   - `opendatahub.io/connection-path` → `<registered-model>/<version>`
-   - `spec.model.uri` → `s3://models-verified/<registered-model>/<version>`
-3. Phase 15 in `script.sh` sets `MODEL_CONN_VERSION` (default `d4xs2`) and applies both templates via `sed`, or apply overlay 16 for RBAC/NP only:
+On auto-pass and review, `nemo-guardrails-test` deploys `NemoGuardrails/nemo-guardrails` (auth on) in front of the verified model. Prerequisites: overlay 04-zones applies `instances/model-test-ns/nemo-guardrails-serviceaccount.yaml` (NeMo SA + token Secret) and the pipeline's NeMo rights in `pipeline-apply-rbac.yaml`. Overlay 04-zones also applies `instances/model-test-ns/serving-rbac.yaml` (`test-user` + `nemo-guardrails-user` Role for the smoke tests) and `networkpolicy-nemo-guardrails-apiserver.yaml` (auth proxy → API server). See [docs/nemo-guardrails.md](../../docs/nemo-guardrails.md#verifying-in-model-test-guide-ch-32-verification).
 
 ```bash
-export MODEL_CONN_VERSION=d4xs2   # last five chars of PipelineRun name
-# script.sh Phase 15 block, or manually:
-sed "s/PLACEHOLDER/${MODEL_CONN_VERSION}/g" instances/model-test/qwen3-8b-fp8-verified.yaml | oc apply -n model-test -f -
-oc apply -k ./overlays/16-test-serving/ -n model-test
+GUARDRAILS_ROUTE=https://$(oc get routes/nemo-guardrails -n model-test -o jsonpath='{.status.ingress[0].host}')
+curl -sk -X POST "${GUARDRAILS_ROUTE}/v1/chat/completions" \
+  -H "Content-Type: application/json" -H "Authorization: Bearer $(oc create token test-user -n model-test)" \
+  -d '{"model":"redhatai-qwen3-8b-fp8-dynamic","messages":[{"role":"user","content":"I yearn for violence"}]}'
 ```
-
-Requires `minio-s3-secret.yaml` from Phase 4 for connection secret credentials.
 
 ## Smoke test
 
@@ -53,4 +46,4 @@ TOKEN="$(oc create token test-user -n model-test)"
 curl -sS "${GATEWAY_URL}/v1/models" -H "Authorization: Bearer ${TOKEN}" | jq .
 ```
 
-Ensure Phase 4 created `minio-s3-secret.yaml` and applied `minio-s3` in `model-test`. Phase 15 in `script.sh` applies `model-connection-secret.yaml.template` and `qwen3-8b-fp8-verified.yaml` with `MODEL_CONN_VERSION` (substitutes `PLACEHOLDER`). `publish-artifact` does the same on each promote.
+Ensure Quay pull secrets exist in `model-test` (gitops-scripts Phase 2) so the verified ModelCar can be pulled.

@@ -1,0 +1,269 @@
+# NeMo Guardrails (TrustyAI NemoGuardrails CR, Technology Preview in RHOAI 3.2).
+#
+# nemo-guardrails-deploy follows "Enabling AI safety with Guardrails", ch. 3.2:
+#   steps 1–5  ServiceAccount, view RoleBinding, API token Secret — static, applied by
+#              instances/model-sandbox and instances/model-test-ns (nemo-guardrails-serviceaccount.yaml, overlay 04-zones)
+#   step 6–7   ConfigMap with config.yaml / rails.co / actions.py — copied from
+#              model-eval/nemo-guardrails-config-template with the predictor URL filled in
+#   step 8–9   NemoGuardrails CR
+#   verify     wait for status.phase=Ready, export the in-cluster URL
+#
+# Used twice by model-security-pipeline:
+#   nemo-guardrails-start  model-sandbox, in front of the untrusted eval vLLM (auth off,
+#                          sandbox NetworkPolicy keeps the operator-created Route unreachable)
+#   nemo-guardrails-test   model-test, in front of the verified model after publish (auth on)
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: nemo-guardrails-deploy
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+    ai.security.pipeline/stage: nemo-guardrails
+spec:
+  description: >
+    Create a NeMo Guardrails ConfigMap + NemoGuardrails CR in front of an
+    LLMInferenceService, wait until Ready, and export the guarded OpenAI-compatible URL.
+  params:
+  - name: enabled
+    type: string
+    default: 'true'
+    description: '"false" → no-op; both results are the string "disabled"'
+  - name: namespace
+    type: string
+    default: model-sandbox
+  - name: name
+    type: string
+    default: ''
+    description: NemoGuardrails CR name (also the Service name). Default guardrails-<run suffix>.
+  - name: pipeline-run-name
+    type: string
+    default: ''
+  - name: model-id
+    type: string
+    description: Served model name (openai model_name)
+  - name: model-endpoint
+    type: string
+    default: ''
+    description: Predictor base URL (…/v1). Empty → resolved from the LLMInferenceService.
+  - name: llmis-name
+    type: string
+    default: ''
+    description: LLMInferenceService to guard. Empty → the one whose spec.model.name == model-id.
+  - name: enable-auth
+    type: string
+    default: 'false'
+    description: security.opendatahub.io/enable-auth on the CR (kube-rbac-proxy on :443)
+  - name: template-configmap
+    type: string
+    default: nemo-guardrails-config-template
+  - name: max-words
+    type: string
+    default: '300'
+  - name: wait-timeout
+    type: string
+    default: 900s
+  results:
+  - name: endpoint-url
+    description: In-cluster NeMo Guardrails base URL (…/v1); "disabled" when disabled
+  - name: service-name
+    description: NemoGuardrails CR / Service name; "disabled" when disabled
+  steps:
+  - name: deploy
+    image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+    script: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      if [[ "$(echo '$(params.enabled)' | tr '[:upper:]' '[:lower:]')" != "true" ]]; then
+        echo "nemo guardrails disabled; skipping deploy"
+        # Non-empty sentinel: some Tekton versions drop empty results and then fail consumers.
+        echo -n "disabled" > "$(results.endpoint-url.path)"
+        echo -n "disabled" > "$(results.service-name.path)"
+        exit 0
+      fi
+      NS="$(params.namespace)"
+      MODEL_ID="$(params.model-id)"
+      PR="$(params.pipeline-run-name)"
+      if [[ -z "${PR}" ]]; then PR="$(context.taskRun.name)"; fi
+      VERSION="${PR: -5}"
+      NAME="$(params.name)"
+      if [[ -z "${NAME}" ]]; then NAME="guardrails-${VERSION}"; fi
+      NAME="$(echo "${NAME}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | cut -c1-50)"
+      AUTH="$(echo '$(params.enable-auth)' | tr '[:upper:]' '[:lower:]')"
+      TEMPLATE_NS="$(context.taskRun.namespace)"
+      CFG="${NAME}-config"
+      CA_CM="${NAME}-model-ca"
+      WORK="$(mktemp -d)"
+
+      if ! oc get secret nemo-guardrails-api-token -n "${NS}" >/dev/null 2>&1; then
+        echo "Secret nemo-guardrails-api-token missing in ${NS}; apply overlay 04-zones (nemo-guardrails-serviceaccount.yaml)" >&2
+        exit 1
+      fi
+
+      # ---- resolve the model to guard -------------------------------------------------
+      LLMIS="$(params.llmis-name)"
+      if [[ -z "${LLMIS}" ]]; then
+        LLMIS="$(oc get llminferenceservice -n "${NS}" -o go-template='{{range .items}}{{if eq .spec.model.name "'"${MODEL_ID}"'"}}{{.metadata.name}}{{"\n"}}{{end}}{{end}}' | head -n1)"
+      fi
+      if [[ -z "${LLMIS}" ]]; then
+        echo "no LLMInferenceService serving ${MODEL_ID} in ${NS}" >&2
+        oc get llminferenceservice -n "${NS}" >&2 || true
+        exit 1
+      fi
+      EP="$(params.model-endpoint)"
+      if [[ -z "${EP}" ]]; then
+        oc wait --for=condition=Ready "llminferenceservice/${LLMIS}" -n "${NS}" --timeout="$(params.wait-timeout)"
+        SVC="$(oc get svc -n "${NS}" -l "app.kubernetes.io/name=${LLMIS},kserve.io/component=workload" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)"
+        if [[ -z "${SVC}" ]]; then
+          SVC="${LLMIS}-kserve-workload-svc"
+          oc get svc "${SVC}" -n "${NS}" >/dev/null 2>&1 || SVC=""
+        fi
+        if [[ -n "${SVC}" ]]; then
+          PORT="$(oc get svc "${SVC}" -n "${NS}" -o jsonpath='{.spec.ports[0].port}')"
+          APPP="$(oc get svc "${SVC}" -n "${NS}" -o jsonpath='{.spec.ports[0].appProtocol}')"
+          PNAME="$(oc get svc "${SVC}" -n "${NS}" -o jsonpath='{.spec.ports[0].name}')"
+          SCHEME=http
+          if [[ "${APPP}" == "https" || "${PNAME}" == "https" ]]; then SCHEME=https; fi
+          EP="${SCHEME}://${SVC}.${NS}.svc:${PORT}"
+        else
+          EP="$(oc get "llminferenceservice/${LLMIS}" -n "${NS}" -o jsonpath='{.status.addresses[0].url}' 2>/dev/null || true)"
+        fi
+      fi
+      if [[ -z "${EP}" ]]; then
+        echo "could not resolve predictor URL for ${LLMIS}" >&2
+        exit 1
+      fi
+      case "${EP}" in
+        */v1|*/v1/) EP="${EP%/}" ;;
+        *) EP="${EP%/}/v1" ;;
+      esac
+      echo "guarding ${LLMIS} (${MODEL_ID}) at ${EP} with NemoGuardrails/${NAME} in ${NS} (auth=${AUTH})"
+
+      # ---- CA bundle for the KServe workload certificate ------------------------------
+      # NeMo verifies TLS to the predictor; LLMInferenceService workloads present a
+      # KServe-issued cert from <llmis>-kserve-self-signed-certs.
+      CA_SPEC=""
+      CERT_SECRET="${LLMIS}-kserve-self-signed-certs"
+      if [[ "${EP}" == https://* ]] && oc get secret "${CERT_SECRET}" -n "${NS}" >/dev/null 2>&1; then
+        mkdir -p "${WORK}/ca"
+        oc extract "secret/${CERT_SECRET}" -n "${NS}" --keys=ca.crt --to="${WORK}/ca" --confirm >/dev/null 2>&1 || true
+        if [[ ! -s "${WORK}/ca/ca.crt" ]]; then
+          oc extract "secret/${CERT_SECRET}" -n "${NS}" --keys=tls.crt --to="${WORK}/ca" --confirm >/dev/null
+          mv "${WORK}/ca/tls.crt" "${WORK}/ca/ca.crt"
+        fi
+        oc create configmap "${CA_CM}" -n "${NS}" --from-file=ca.crt="${WORK}/ca/ca.crt" \
+          --dry-run=client -o yaml | oc apply -n "${NS}" -f -
+        CA_SPEC="$(printf '  caBundleConfig:\n    configMapName: %s\n    configMapKeys:\n      - ca.crt\n' "${CA_CM}")"
+        echo "mounted predictor CA from ${CERT_SECRET}"
+      else
+        echo "no ${CERT_SECRET}; relying on the operator's ODH trusted / service CA bundle"
+      fi
+
+      # ---- step 6–7: guardrails ConfigMap ---------------------------------------------
+      mkdir -p "${WORK}/cfg"
+      oc extract "configmap/$(params.template-configmap)" -n "${TEMPLATE_NS}" --to="${WORK}/cfg" --confirm >/dev/null
+      for f in config.yaml rails.co actions.py; do
+        [[ -s "${WORK}/cfg/${f}" ]] || { echo "template ${f} missing in $(params.template-configmap)" >&2; exit 1; }
+      done
+      sed -i -e "s|__MODEL_ENDPOINT__|${EP}|g" -e "s|__MODEL_NAME__|${MODEL_ID}|g" "${WORK}/cfg/config.yaml"
+      oc create configmap "${CFG}" -n "${NS}" --from-file="${WORK}/cfg" \
+        --dry-run=client -o yaml | oc apply -n "${NS}" -f -
+      oc label configmap "${CFG}" -n "${NS}" --overwrite \
+        app.kubernetes.io/part-of=ai-model-security-pipeline \
+        ai.security.pipeline/component=nemo-guardrails >/dev/null
+
+      # ---- step 8–9: NemoGuardrails CR ------------------------------------------------
+      cat > "${WORK}/cr.yaml" <<EOF
+      apiVersion: trustyai.opendatahub.io/v1alpha1
+      kind: NemoGuardrails
+      metadata:
+        name: ${NAME}
+        labels:
+          app.kubernetes.io/part-of: ai-model-security-pipeline
+          ai.security.pipeline/component: nemo-guardrails
+        annotations:
+          security.opendatahub.io/enable-auth: '${AUTH}'
+          security.platform/guarded-model: ${LLMIS}
+          security.platform/eval-pipelinerun: ${PR}
+          security.platform/source-pipeline: model-security-pipeline
+      spec:
+        nemoConfigs:
+          - name: ${CFG}
+            configMaps:
+              - ${CFG}
+      ${CA_SPEC}
+        env:
+          - name: OPENAI_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: nemo-guardrails-api-token
+                key: token
+          - name: NEMO_MAX_WORDS
+            value: "$(params.max-words)"
+          # Presidio's email recognizer uses tldextract, which downloads the public
+          # suffix list (publicsuffix.org, GitHub) on first use. model-sandbox has no
+          # internet egress, so without a timeout the first e-mail check hangs for
+          # minutes on dropped connections. Fall back to the bundled list after 2 s.
+          - name: TLDEXTRACT_CACHE_TIMEOUT
+            value: "2"
+      EOF
+      cat "${WORK}/cr.yaml"
+      oc apply -n "${NS}" -f "${WORK}/cr.yaml"
+      # Config changes are not hot-reloaded; restart an existing server so it picks them up.
+      oc rollout restart "deployment/${NAME}" -n "${NS}" >/dev/null 2>&1 || true
+
+      if ! oc wait --for=jsonpath='{.status.phase}'=Ready "nemoguardrails/${NAME}" -n "${NS}" --timeout="$(params.wait-timeout)"; then
+        echo "NemoGuardrails ${NAME} not Ready" >&2
+        oc get "nemoguardrails/${NAME}" -n "${NS}" -o yaml >&2 || true
+        oc get pods -n "${NS}" -l "app=${NAME}" >&2 || true
+        oc logs -n "${NS}" -l "app=${NAME}" -c nemo-guardrails --tail=80 >&2 || true
+        exit 1
+      fi
+      oc rollout status "deployment/${NAME}" -n "${NS}" --timeout="$(params.wait-timeout)" || true
+
+      if [[ "${AUTH}" == "true" ]]; then
+        URL="https://${NAME}.${NS}.svc:443/v1"
+      else
+        URL="http://${NAME}.${NS}.svc:80/v1"
+      fi
+      echo -n "${URL}" > "$(results.endpoint-url.path)"
+      echo -n "${NAME}" > "$(results.service-name.path)"
+      echo "NeMo Guardrails ready: ${URL}"
+      ROUTE="$(oc get route "${NAME}" -n "${NS}" -o jsonpath='{.status.ingress[0].host}' 2>/dev/null || true)"
+      if [[ -n "${ROUTE}" ]]; then echo "route: https://${ROUTE} (reachable only if the zone NetworkPolicy admits openshift-ingress)"; fi
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: nemo-guardrails-delete
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+    ai.security.pipeline/stage: nemo-guardrails
+spec:
+  description: Delete the per-run NemoGuardrails CR and its ConfigMaps. Safe when nothing was deployed.
+  params:
+  - name: namespace
+    type: string
+    default: model-sandbox
+  - name: name
+    type: string
+    default: ''
+    description: NemoGuardrails CR name. Default guardrails-<run suffix> (same as nemo-guardrails-deploy).
+  - name: pipeline-run-name
+    type: string
+    default: ''
+  steps:
+  - name: delete
+    image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+    script: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      NS="$(params.namespace)"
+      PR="$(params.pipeline-run-name)"
+      if [[ -z "${PR}" ]]; then PR="$(context.taskRun.name)"; fi
+      VERSION="${PR: -5}"
+      NAME="$(params.name)"
+      if [[ -z "${NAME}" ]]; then NAME="guardrails-${VERSION}"; fi
+      NAME="$(echo "${NAME}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | cut -c1-50)"
+      oc delete nemoguardrails "${NAME}" -n "${NS}" --ignore-not-found --wait=true --timeout=180s || true
+      oc delete configmap "${NAME}-config" "${NAME}-model-ca" -n "${NS}" --ignore-not-found
+      echo "deleted NemoGuardrails ${NAME} in ${NS}"

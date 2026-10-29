@@ -5,4 +5,5 @@ kind: Kustomization
 resources:
   - nodefeaturediscovery.yaml
   - cluster-policy.yaml
-  - driver.yaml
+  # driver.yaml (NVIDIADriver CR) intentionally omitted: use ClusterPolicy driver only.
+  # Parallel NVIDIADriver + ClusterPolicy daemonsets fight for the GPU node (anti-affinity).

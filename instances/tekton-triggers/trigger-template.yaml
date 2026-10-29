@@ -7,6 +7,8 @@ metadata:
 spec:
   params:
     - name: model-id
+    - name: modelcar-image
+    - name: serving-yaml
   resourcetemplates:
     - apiVersion: tekton.dev/v1
       kind: PipelineRun
@@ -20,6 +22,8 @@ spec:
         params:
           - name: model-id
             value: $(tt.params.model-id)
+          - name: modelcar-image
+            value: $(tt.params.modelcar-image)
           - name: model-path
             value: /workspace/models
           - name: model-registry-namespace
@@ -27,9 +31,9 @@ spec:
           - name: git-url
             value: https://github.com/sukantadash/ai-model-security-pipeline.git
           - name: model-sandbox-path
-            value: instances/model-sandbox
-          - name: model-test-path
-            value: instances/model-test
+            value: instances/model-sandbox/LLMInferenceService.yaml
+          - name: serving-yaml
+            value: $(tt.params.serving-yaml)
         workspaces:
           - name: shared-data
             persistentVolumeClaim:

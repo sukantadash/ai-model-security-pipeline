@@ -1,0 +1,23 @@
+# ModelCar: HF weights at /models only (OpenShift AI / KServe OCI URI).
+# Build context: this directory. Pass --build-arg HF_REPO=... and HF_TOKEN when needed.
+ARG HF_REPO=RedHatAI/Qwen3-8B-FP8-dynamic
+
+FROM registry.access.redhat.com/ubi9/python-311:latest AS base
+
+USER root
+ARG HF_REPO
+ARG HF_TOKEN=""
+ENV HF_REPO=${HF_REPO}
+ENV HF_TOKEN=${HF_TOKEN}
+ENV HUGGING_FACE_HUB_TOKEN=${HF_TOKEN}
+
+RUN pip install --no-cache-dir huggingface-hub
+
+COPY download_model.py .
+RUN python download_model.py
+
+FROM registry.access.redhat.com/ubi9/ubi-micro:9.4
+
+COPY --from=base /models /models
+
+USER 1001

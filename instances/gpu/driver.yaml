@@ -1,3 +1,8 @@
+# UNUSED — not referenced by kustomization.yaml.
+# NVIDIADriver CR conflicts with ClusterPolicy-managed driver daemonsets (anti-affinity).
+# Prefer ClusterPolicy driver settings in cluster-policy.yaml (version 580.178.04, proprietary).
+# Keep this file only as a reference; do not re-add to kustomization without useNvidiaDriverCRD: true
+# and disabling the ClusterPolicy driver path.
 kind: NVIDIADriver
 apiVersion: nvidia.com/v1alpha1
 metadata:
@@ -6,7 +11,8 @@ spec:
   driverType: gpu
   repository: nvcr.io/nvidia
   image: driver
-  version: 'sha256:b93f1aab82ceb081919f58e13a66142c5857a0a5e68e13661a3e74696434c1d1'
+  version: "580.178.04"
+  kernelModuleType: proprietary
   nodeSelector: {}
   manager: {}
   repoConfig:

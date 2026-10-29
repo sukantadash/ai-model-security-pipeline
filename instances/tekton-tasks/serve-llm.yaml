@@ -7,11 +7,14 @@ metadata:
     ai.security.pipeline/stage: serve-llm
 spec:
   description: >
-    Clone git-url, patch LLMInferenceService.yaml (name + untrusted S3 path),
-    apply in model-sandbox, wait until Ready, export the in-cluster URL.
+    Clone git-url, replace placeholder image URI in the sandbox serving YAML with
+    oci://…:<model-id>-unverified, apply in model-sandbox, wait until Ready, export endpoint URL.
   params:
   - name: model-id
     type: string
+  - name: modelcar-image
+    type: string
+    description: Shared ModelCar repository (tag is model-id-unverified)
   - name: pipeline-run-name
     type: string
     default: ''
@@ -20,7 +23,8 @@ spec:
     description: Git repo that contains serving manifests
   - name: model-sandbox-path
     type: string
-    default: instances/model-sandbox
+    default: instances/model-sandbox/LLMInferenceService.yaml
+    description: File path in git-url to sandbox LLMInferenceService YAML
   - name: git-revision
     type: string
     default: ''
@@ -54,26 +58,20 @@ spec:
       MODEL_ID="$(params.model-id)"
       PR="$(params.pipeline-run-name)"
       if [[ -z "${PR}" ]]; then PR="$(context.taskRun.name)"; fi
-      VERSION="${PR: -5}"
-      NAME="eval-${VERSION}"
-      NAME="$(echo "${NAME}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | cut -c1-63)"
       OUT="$(workspaces.results.path)/patched-sandbox"
       rm -rf "${OUT}"
       export GIT_URL="$(params.git-url)"
       export GIT_PATH="$(params.model-sandbox-path)"
       export GIT_REVISION="$(params.git-revision)"
       export OUT_DIR="${OUT}"
-      export NAME
-      export MODEL_NAME="${MODEL_ID}"
-      export MODEL_URI="s3://models-ingress/${MODEL_ID}/"
+      export MODEL_URI="oci://$(params.modelcar-image):$(params.model-id)-unverified"
       export NAMESPACE="$(params.namespace)"
       /scripts/clone-and-patch-llmis.sh
+      NAME="$(cat "${OUT}/.llmis-name")"
       echo -n "${NAME}" > "$(workspaces.results.path)/service-name"
+      echo "sandbox ${NAME} uri ${MODEL_URI} run ${PR}"
   - name: apply
     image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
-    envFrom:
-    - secretRef:
-        name: minio-s3
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
@@ -82,35 +80,12 @@ spec:
       NAME="$(cat "$(workspaces.results.path)/service-name")"
       PR="$(params.pipeline-run-name)"
       if [[ -z "${PR}" ]]; then PR="$(context.taskRun.name)"; fi
-      ENDPOINT="${AWS_ENDPOINT_URL:-${MINIO_ENDPOINT:-http://minio.minio-system.svc:9000}}"
-      HTTPS=0
-      case "${ENDPOINT}" in https://*) HTTPS=1 ;; esac
-      HOSTPORT="${ENDPOINT#http://}"
-      HOSTPORT="${HOSTPORT#https://}"
-      HOSTPORT="${HOSTPORT%/}"
-      oc create secret generic minio-s3 -n "${NS}" \
-        --from-literal=MINIO_ENDPOINT="${MINIO_ENDPOINT:-${ENDPOINT}}" \
-        --from-literal=AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
-        --from-literal=AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
-        --from-literal=AWS_REGION="${AWS_REGION:-us-east-1}" \
-        --from-literal=AWS_ENDPOINT_URL="${ENDPOINT}" \
-        --from-literal=AWS_DEFAULT_REGION="${AWS_REGION:-us-east-1}" \
-        --from-literal=S3_USE_HTTPS="${HTTPS}" \
-        --from-literal=S3_VERIFY_SSL="0" \
-        --from-literal=AWS_S3_FORCE_PATH_STYLE="true" \
-        --dry-run=client -o yaml | oc apply -f -
-      oc annotate secret minio-s3 -n "${NS}" --overwrite \
-        "serving.kserve.io/s3-endpoint=${HOSTPORT}" \
-        "serving.kserve.io/s3-usehttps=${HTTPS}" \
-        "serving.kserve.io/s3-region=${AWS_REGION:-us-east-1}" \
-        "serving.kserve.io/s3-verifyssl=0" \
-        "serving.kserve.io/s3-useanoncredential=false" \
-        "serving.kserve.io/s3-usevirtualbucket=false"
       PATCHED="$(workspaces.results.path)/patched-sandbox"
       oc apply -n "${NS}" -f "${PATCHED}"
       oc annotate "llminferenceservice/${NAME}" -n "${NS}" --overwrite \
         "security.platform/eval-pipelinerun=${PR}" \
-        "security.platform/source-pipeline=model-security-pipeline" || true
+        "security.platform/source-pipeline=model-security-pipeline" \
+        "security.platform/model-id=${MODEL_ID}" || true
       oc wait --for=condition=Ready "llminferenceservice/${NAME}" -n "${NS}" --timeout="$(params.wait-timeout)"
       SVC="$(oc get svc -n "${NS}" -l "app.kubernetes.io/name=${NAME},kserve.io/component=workload" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)"
       if [[ -z "${SVC}" ]]; then
@@ -200,8 +175,20 @@ spec:
       NS="$(params.namespace)"
       PR="$(params.pipeline-run-name)"
       if [[ -z "${PR}" ]]; then PR="$(context.taskRun.name)"; fi
-      VERSION="${PR: -5}"
-      NAME="eval-${VERSION}"
-      NAME="$(echo "${NAME}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | cut -c1-63)"
-      oc delete llminferenceservice "${NAME}" -n "${NS}" --ignore-not-found --wait=true --timeout=180s
-      echo "deleted ${NAME} in ${NS} (namespace kept)"
+      # Prefer annotation from serve-llm-start; fall back to fixed example name.
+      NAMES="$(oc get llminferenceservice -n "${NS}" \
+        -l "ai.security.pipeline/eval-serving=true" \
+        -o jsonpath='{range .items[?(@.metadata.annotations.security\.platform/eval-pipelinerun=="'"${PR}"'")]}{.metadata.name}{"\n"}{end}' 2>/dev/null || true)"
+      if [[ -z "${NAMES}" ]]; then
+        NAMES="$(oc get llminferenceservice -n "${NS}" -o jsonpath='{range .items[?(@.metadata.annotations.security\.platform/eval-pipelinerun=="'"${PR}"'")]}{.metadata.name}{"\n"}{end}' 2>/dev/null || true)"
+      fi
+      if [[ -z "${NAMES}" ]]; then
+        oc delete llminferenceservice -n "${NS}" -l "ai.security.pipeline/eval-serving=true" --ignore-not-found --wait=true --timeout=180s || true
+        echo "deleted eval-serving LLMIS in ${NS} (namespace kept)"
+        exit 0
+      fi
+      while IFS= read -r NAME; do
+        [[ -z "${NAME}" ]] && continue
+        oc delete llminferenceservice "${NAME}" -n "${NS}" --ignore-not-found --wait=true --timeout=180s
+        echo "deleted ${NAME} in ${NS} (namespace kept)"
+      done <<< "${NAMES}"

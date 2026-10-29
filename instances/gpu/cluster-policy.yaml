@@ -12,7 +12,14 @@ spec:
     defaultWorkload: container
   driver:
     enabled: true
+    # ClusterPolicy path only — do not also apply NVIDIADriver (conflicts / anti-affinity).
     useNvidiaDriverCRD: false
+    # OCP 4.22 / RHCOS 9.8 → operator appends -rhel9.8. Use a tag that exists on nvcr.io
+    # (550.90.07-rhel9.8 does not; 570.124.06 open modules fail to compile on this kernel).
+    repository: nvcr.io/nvidia
+    image: driver
+    version: "580.178.04"
+    kernelModuleType: proprietary
     upgradePolicy:
       autoUpgrade: true
       drain:
@@ -20,7 +27,6 @@ spec:
         enable: false
         force: false
         timeoutSeconds: 300
-      kernelModuleType: auto
       maxParallelUpgrades: 1
       maxUnavailable: 25%
       podDeletion:

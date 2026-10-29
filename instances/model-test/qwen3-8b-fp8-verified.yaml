@@ -1,6 +1,5 @@
-# Verified model — aligned with Model Registry deploy (see minio-system LLMInferenceService).
-# script.sh Phase 15 substitutes PLACEHOLDER with MODEL_CONN_VERSION (default d4xs2).
-# publish-artifact patches the same fields on auto-pass/review.
+# Verified serving YAML. publish-artifact replaces oci://PLACEHOLDER with
+# oci://quay.io/sudash/ai-model-security-pipeline:<model-id>-verified-<score>-<version>.
 apiVersion: serving.kserve.io/v1alpha2
 kind: LLMInferenceService
 metadata:
@@ -9,25 +8,22 @@ metadata:
     app.kubernetes.io/part-of: ai-model-security-pipeline
     security.platform/zone: test
   annotations:
-    opendatahub.io/connection-path: redhatai-qwen3-8b-fp8-dynamic/PLACEHOLDER
-    opendatahub.io/connections: redhatai-qwen3-8b-fp8-dynamic-PLACEHOLDER
     opendatahub.io/hardware-profile-name: gpu-profile
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
     opendatahub.io/model-type: generative
-    openshift.io/display-name: redhatai-qwen3-8b-fp8-dynamic - PLACEHOLDER
+    openshift.io/display-name: redhatai-qwen3-8b-fp8-dynamic
     security.opendatahub.io/enable-auth: "false"
     security.platform/verified: "true"
     security.platform/source-pipeline: model-security-pipeline
     security.platform/model-registry: rhoai-model-registries
     security.platform/registered-model: redhatai-qwen3-8b-fp8-dynamic
-    security.platform/model-version: PLACEHOLDER
 spec:
   baseRefs:
     - name: redhatai-qwen3-8b-fp8-dynamic
   replicas: 1
   model:
     name: redhatai-qwen3-8b-fp8-dynamic
-    uri: s3://models-verified/redhatai-qwen3-8b-fp8-dynamic/PLACEHOLDER
+    uri: oci://PLACEHOLDER
   router:
     gateway: {}
     route: {}
@@ -44,11 +40,11 @@ spec:
         resources:
           limits:
             cpu: "4"
-            memory: 32Gi
+            memory: 12Gi
             nvidia.com/gpu: "1"
           requests:
             cpu: "2"
-            memory: 16Gi
+            memory: 8Gi
             nvidia.com/gpu: "1"
         livenessProbe:
           httpGet:

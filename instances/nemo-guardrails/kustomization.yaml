@@ -1,0 +1,23 @@
+# NeMo Guardrails configuration template (Technology Preview in RHOAI 3.2).
+#
+# Stored once in model-eval as ConfigMap nemo-guardrails-config-template.
+# The nemo-guardrails-deploy Task copies it into model-sandbox (eval) or model-test
+# (verified serving), substituting __MODEL_ENDPOINT__ and __MODEL_NAME__, then creates
+# a NemoGuardrails CR that mounts it. Edit config/ to change rails for every run.
+#
+# Applied by overlay 07-tekton-tasks (oc apply -k ./overlays/07-tekton-tasks/ -n model-eval).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+generatorOptions:
+  disableNameSuffixHash: true
+  labels:
+    app.kubernetes.io/part-of: ai-model-security-pipeline
+    ai.security.pipeline/component: nemo-guardrails
+
+configMapGenerator:
+  - name: nemo-guardrails-config-template
+    files:
+      - config/config.yaml
+      - config/rails.co
+      - config/actions.py

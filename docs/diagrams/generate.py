@@ -139,7 +139,7 @@ def architecture_overview() -> str:
         (348, 160, 160, "Static scan", "Malware, CVE, license", "40% of S_total", FILL_BLUE, BLUE),
         (524, 160, 160, "Dynamic scan", "Kata, Falco, Kepler, vLLM", "Hard gate", FILL_RED, RED),
         (700, 160, 160, "Capability", "Quality, cost, stability, bias", "35% of S_total", FILL_BLUE, BLUE),
-        (876, 160, 148, "Adversarial", "Injection, jailbreak, harm", "25% of S_total", FILL_BLUE, BLUE),
+        (876, 160, 148, "Adversarial", "Injection, jailbreak, NeMo", "25% of S_total", FILL_BLUE, BLUE),
     ]
     for x, y, w, t, s, f, fill, st in stages:
         parts.append(R(x, y, w, 92, fill, st, 1, 6))
@@ -148,7 +148,7 @@ def architecture_overview() -> str:
         parts.append(T(x + 10, y + 72, f, 11, st, "600"))
 
     parts.append(R(348, 268, 676, 168, FILL_GRAY, STROKE, 1, 8))
-    parts.append(T(368, 296, "DAG: fetch -> static(3) -> dynamic(4) -> capability(4) -> adversarial(3) -> gate", 12, INK, "600"))
+    parts.append(T(368, 296, "DAG: fetch -> static(3) -> dynamic(4) -> capability(4) -> adversarial(4) -> gate", 12, INK, "600"))
     parts.append(T(368, 318, "S_total = 0.40*S_static + 0.35*S_capability + 0.25*S_redteam", 12, MUTED))
     parts.append(R(368, 338, 200, 76, GREEN, GREEN, 0, 6))
     parts.append(T(468, 368, ">= 75  Auto-pass", 14, "#fff", "700", "middle"))
@@ -400,14 +400,19 @@ def _pipeline_clean() -> str:
     node(738, 308, 260, 56, "anomaly-bias-detection", "regression / bias / anomaly")
     node(738, 430, 260, 58, "capability-eval", "capability.json", FILL_BLUE, BLUE)
 
-    node(1038, 140, 270, 58, "prompt-injection", "attack success rate")
-    node(1038, 214, 270, 58, "jailbreak-guardrail-bypass", "bypass rate")
-    node(1038, 288, 270, 58, "harmful-content-bias", "harmful rate / illegal")
+    node(1038, 110, 270, 56, "prompt-injection", "attack success rate")
+    node(1038, 176, 270, 56, "jailbreak-guardrail-bypass", "bypass rate")
+    node(1038, 242, 270, 56, "harmful-content-bias", "harmful rate / illegal")
+    node(1038, 308, 270, 56, "nemo-guardrails", "NeMo block / false-positive rate", FILL_GREEN, GREEN)
     node(1038, 430, 270, 58, "adversarial-test", "adversarial-test.json", FILL_BLUE, BLUE)
+    # NeMo Guardrails server in model-sandbox, deployed after dynamic-scan
+    node(738, 370, 260, 48, "nemo-guardrails-start", "NemoGuardrails CR -> sandbox vLLM", FILL_GREEN, GREEN)
+    parts.append(al(998, 394, 1038, 336))
 
     node(1348, 180, 220, 64, "score-gate", "S_total + routing", FILL_BLUE, BLUE)
     node(1348, 270, 220, 64, "publish-artifact", "when passed=true", FILL_GREEN, GREEN)
-    node(1348, 430, 220, 64, "archive-results", "finally (always)", FILL_GOLD, GOLD)
+    node(1348, 350, 220, 64, "nemo-guardrails-test", "NeMo in front of model-test", FILL_GREEN, GREEN)
+    node(1348, 430, 220, 64, "archive-results", "finally (+ stop CRs)", FILL_GOLD, GOLD)
 
     # fetch -> three static
     parts.append(al(188, 282, 208, 149))
@@ -423,6 +428,7 @@ def _pipeline_clean() -> str:
     parts.append(al(998, 459, 1038, 459))
     parts.append(al(1308, 459, 1348, 212))
     parts.append(al(1458, 244, 1458, 270))
+    parts.append(al(1458, 334, 1458, 350))
 
     parts.append(T(32, 530, "Each column: siblings runAfter the previous merge. Merge tasks always succeed (concat JSON to MinIO scan-result/).", 12, MUTED))
     parts.append(T(32, 552, "score-gate fails the PipelineRun only when routing=reject. archive-results is pipeline finally and always writes manifest.json.", 12, MUTED))
@@ -434,9 +440,9 @@ def _pipeline_clean() -> str:
     parts.append(R(180, 600, 16, 16, FILL_RED, RED, 1, 3))
     parts.append(T(202, 613, "Hard gate (not in S_total)", 12, INK))
     parts.append(R(420, 600, 16, 16, FILL_GREEN, GREEN, 1, 3))
-    parts.append(T(442, 613, "Conditional publish", 12, INK))
-    parts.append(R(620, 600, 16, 16, FILL_GOLD, GOLD, 1, 3))
-    parts.append(T(642, 613, "finally", 12, INK))
+    parts.append(T(442, 613, "Conditional publish / NeMo Guardrails", 12, INK))
+    parts.append(R(720, 600, 16, 16, FILL_GOLD, GOLD, 1, 3))
+    parts.append(T(742, 613, "finally", 12, INK))
 
     return wrap(1600, 660, "\n".join(parts), "Tekton pipeline DAG for model-security-pipeline")
 
@@ -522,7 +528,7 @@ def storage_flow() -> str:
         "static-malware.json  |  static-vulnerabilities.json  |  static-license-compliance.json  ->  static-scan.json",
         "dynamic-isolated-runtime.json  |  dynamic-behavior.json  |  dynamic-abnormal-resources.json  |  dynamic-basic-inference.json  ->  dynamic-scan.json",
         "capability-quality.json  |  capability-performance-cost.json  |  capability-stability.json  |  capability-anomaly-bias.json  ->  capability.json",
-        "adversarial-prompt-injection.json  |  adversarial-jailbreak-*.json  |  adversarial-harmful-*.json  ->  adversarial-test.json",
+        "adversarial-prompt-injection.json  |  -jailbreak-*  |  -harmful-*  |  -nemo-guardrails.json  ->  adversarial-test.json",
         "score.json   publish.json   manifest.json",
     ]
     yy = 380

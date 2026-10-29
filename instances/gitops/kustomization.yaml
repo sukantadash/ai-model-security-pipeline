@@ -1,5 +1,7 @@
+# Single apply entrypoint for App-of-Apps root Application.
+# Child Applications live under apps/ and are synced by Argo CD.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - application-model-test.yaml
+  - application-root.yaml

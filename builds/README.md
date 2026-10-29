@@ -14,7 +14,7 @@ Built in the **`build-image`** namespace (no zone NetworkPolicy). Tekton tasks i
 | `ai-security-static-scan` | `builds/static-scan/` | Static security scanning |
 | `ai-security-dynamic-test` | `builds/dynamic-test/` | Sandboxed runtime probe |
 | `ai-security-capability-eval` | `builds/capability-eval/` | Benchmark evaluation |
-| `ai-security-adversarial-test` | `builds/adversarial-test/` | Adversarial testing (prompt injection, jailbreak, harmful content/bias) |
+| `ai-security-adversarial-test` | `builds/adversarial-test/` | Adversarial testing (prompt injection, jailbreak, harmful content/bias, NeMo Guardrails probes) |
 | `ai-security-score-gate` | `builds/score-gate/` | Weighted `S_total`, routing auto-pass/review/reject |
 | `ai-security-publish` | `builds/publish/` | MinIO promote + Model Registry |
 

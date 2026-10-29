@@ -5,13 +5,18 @@ metadata:
   labels:
     app.kubernetes.io/part-of: ai-model-security-pipeline
 spec:
-  description: Sync model artifacts from MinIO models-ingress into the pipeline workspace.
+  description: >
+    Extract /models from the unverified ModelCar image onto the pipeline workspace
+    (static scanners need a filesystem tree; weights are not synced from MinIO).
   params:
     - name: image
       type: string
-      default: image-registry.openshift-image-registry.svc:5000/build-image/ai-security-model-fetch:latest
+      default: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
     - name: model-id
       type: string
+    - name: modelcar-image
+      type: string
+      description: Shared ModelCar repository (tag is model-id-unverified)
     - name: model-path
       type: string
       default: /workspace/models
@@ -19,20 +24,65 @@ spec:
     - name: model-path
   workspaces:
     - name: models
+  volumes:
+    - name: quay-auth
+      secret:
+        secretName: sudash-modelpipeline-pull-secret
+        optional: false
+        items:
+          - key: .dockerconfigjson
+            path: config.json
   steps:
-    - name: sync
+    - name: extract
       image: $(params.image)
-      envFrom:
-        - secretRef:
-            name: minio-s3
+      imagePullPolicy: IfNotPresent
+      env:
+        - name: MODELCAR_IMAGE
+          value: $(params.modelcar-image)
+        - name: MODEL_ID
+          value: $(params.model-id)
+        - name: REGISTRY_AUTH_FILE
+          value: /run/secrets/quay/config.json
+        - name: DOCKER_CONFIG
+          value: /run/secrets/quay
+      volumeMounts:
+        - name: quay-auth
+          mountPath: /run/secrets/quay
+          readOnly: true
       script: |
         #!/usr/bin/env bash
         set -euo pipefail
-        source /scripts/s3-common.sh
         DEST="$(workspaces.models.path)"
-        s3_sync_from_ingress "$(params.model-id)" "${DEST}"
-        if [[ ! -d "${DEST}" ]] || [[ -z "$(ls -A "${DEST}" 2>/dev/null || true)" ]]; then
-          echo "no model files after sync for $(params.model-id)" >&2
+        IMG="${MODELCAR_IMAGE}:${MODEL_ID}-unverified"
+        # Large single-layer ModelCars (~9 GB) can drop mid-download from quay.io
+        # ("unexpected EOF"). Retry the whole extract with a clean destination.
+        ATTEMPTS="${EXTRACT_ATTEMPTS:-4}"
+        for i in $(seq 1 "${ATTEMPTS}"); do
+          mkdir -p "${DEST}"
+          find "${DEST}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+          echo "Extracting /models from ${IMG} -> ${DEST} (attempt ${i}/${ATTEMPTS})"
+          df -h "${DEST}" || true
+          if oc image extract "${IMG}" --path "/models/:${DEST}/" --confirm; then
+            break
+          fi
+          if [[ "${i}" -eq "${ATTEMPTS}" ]]; then
+            echo "oc image extract failed for ${IMG} after ${ATTEMPTS} attempts" >&2
+            ls -la /run/secrets/quay >&2 || true
+            exit 1
+          fi
+          sleep $((i * 20))
+        done
+        if [[ -d "${DEST}/models" ]] && [[ -n "$(ls -A "${DEST}/models" 2>/dev/null || true)" ]]; then
+          shopt -s dotglob nullglob
+          mv "${DEST}/models"/* "${DEST}/"
+          rmdir "${DEST}/models" 2>/dev/null || true
+        fi
+        COUNT="$(find "${DEST}" -type f ! -path '*/.cache/*' | wc -l | tr -d ' ')"
+        if [[ "${COUNT}" -lt 1 ]]; then
+          echo "no model files after extract from ${IMG}" >&2
+          ls -la "${DEST}" >&2 || true
           exit 1
         fi
+        du -sh "${DEST}" || true
         echo -n "${DEST}" > "$(results.model-path.path)"
+        echo "extracted $(params.model-id) (${COUNT} files) to ${DEST}"

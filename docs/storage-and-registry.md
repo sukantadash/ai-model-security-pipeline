@@ -5,29 +5,29 @@
 
 ![Storage flow](diagrams/storage-flow.svg)
 
-*Weights and scan JSON never share a prefix. Version is the last five characters of the PipelineRun name.*
+*Weights are ModelCar OCI images. Scan JSON stays in MinIO. Version is the last five characters of the PipelineRun name.*
 
 ## What lives where
 
 | Asset | Store | Namespace | Notes |
 |-------|-------|-----------|-------|
 | Scanner images | Internal registry / Quay | `build-image` | Not model weights |
-| Untrusted weights | MinIO `models-ingress/<model-id>/` | cluster S3 | HF fetch Job writes here |
-| Eval workspace | PVC `eval-workspace` | `model-eval` | `/models` only — no scan JSON |
+| Untrusted weights | Quay `…/ai-model-security-pipeline:<model-id>-unverified` | OCI | Built by `model-fetch` Job |
+| Eval workspace | PVC `eval-workspace` | `model-eval` | `/models` extracted from unverified tag |
 | Scan JSON | MinIO `models-eval/<model-id>/<version>/scan-result/` | S3 | Per-subtask + merges + `score.json` |
-| Verified weights | MinIO `models-verified/<model-id>/<version>/` | S3 | Publish on auto-pass or review |
+| Verified weights | Quay `…:<model-id>-verified-<score>-<version>` | OCI | Publish retag on auto-pass or review |
 | Attestations | MinIO `attestations/` | S3 | Tekton Chains target |
-| Serving pointer | RHOAI Model Registry | `rhoai-model-registries` | `storage_uri`, `scan_uri`, `version` |
+| Serving pointer | RHOAI Model Registry | `rhoai-model-registries` | `storage_uri` = `oci://…` |
 
-Anonymous access on all four buckets is `none`.
+Buckets `models-ingress` / `models-verified` may still exist from older installs; the pipeline no longer writes weights there.
 
 ## Version key
 
-PipelineRun `model-security-9x57m` → version `9x57m`.
+PipelineRun `model-security-9x57m` → version `9x57m`. Score 87 → tag `…-verified-87-9x57m`.
 
 ```text
 s3://models-eval/<model-id>/9x57m/scan-result/*.json
-s3://models-verified/<model-id>/9x57m/          # weights only, auto-pass
+oci://quay.io/sudash/ai-model-security-pipeline:<model-id>-verified-87-9x57m
 ```
 
 ## Object names in `scan-result/`
@@ -46,26 +46,25 @@ s3://models-verified/<model-id>/9x57m/          # weights only, auto-pass
 | Publish | `publish.json` |
 | Archive (`finally`) | `manifest.json` |
 
-## Hugging Face download
+## Hugging Face → ModelCar
 
 ```text
 hf://RedHatAI/Qwen3-8B-FP8-dynamic
-  -> model-fetch Job (model-ingress)
-  -> s3://models-ingress/redhatai-qwen3-8b-fp8-dynamic/
-  -> Trigger or manual PipelineRun
-  -> fetch-artifact: mc mirror onto eval PVC
+  -> model-fetch Job (instances/model-ingress-fetch; Containerfile via model-ingress ConfigMap)
+  -> quay.io/sudash/ai-model-security-pipeline:redhatai-qwen3-8b-fp8-dynamic-unverified
+  -> PipelineRun (model-id + modelcar-image + serving-yaml)
+  -> fetch-artifact: oc image extract /models onto eval PVC
+  -> serve-llm-start: oci://…:<model-id>-unverified (placeholder replace)
+  -> publish: retag …:<model-id>-verified-<score>-<version> + apply serving-yaml
 ```
 
-Ingress may use HTTPS to the Hub. Eval must not.
+Knobs for any model: Job `HF_REPO` / `MODEL_ID`, PipelineRun `model-id` / `serving-yaml` (shared `modelcar-image` repo).
 
 ## Model Registry and serving
 
 On auto-pass or review, `publish-artifact`:
 
 1. Refuses unless `score.json` routing is `auto-pass` or `review`.
-2. Copies weights to `s3://models-verified/<model-id>/<version>/`.
-3. `POST /api/model_registry/v1alpha3/registered_models` with storage URI, scan URI, and routing.
-
-OpenShift GitOps then syncs `LLMInferenceService` in `model-test` with `spec.model.uri` set to `model-registry://<model-id>/<version>`. The Model Registry storage initializer resolves that to the registered artifact `s3://` URI. See [GitOps promotion](diagrams/gitops-promotion.svg).
-
-Cosign signing of the weight blob itself is documented; the publish Task does not invoke Cosign today (Chains covers PipelineRun provenance).
+2. Retags ModelCar `<model-id>-unverified` → `<model-id>-verified-<score>-<version>`.
+3. Registers Model Registry artifact with `oci://` URI.
+4. Clones `serving-yaml`, replaces `spec.model.uri` placeholder only, `oc apply` in `model-test`.

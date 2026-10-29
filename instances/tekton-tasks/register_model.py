@@ -70,11 +70,12 @@ def main() -> int:
 
     model_id = os.environ["MODEL_ID"]
     version = os.environ["VERSION"]
-    s3_uri = os.environ["S3_URI"]
+    # Prefer PUBLISHED_URI (oci://…); S3_URI kept for back-compat with older callers.
+    published_uri = os.environ.get("PUBLISHED_URI") or os.environ["S3_URI"]
     scan_uri = os.environ["SCAN_URI"]
     routing = os.environ["ROUTING"]
     props = {
-        "storage_uri": _str_prop(s3_uri),
+        "storage_uri": _str_prop(published_uri),
         "scan_uri": _str_prop(scan_uri),
         "version": _str_prop(version),
         "routing": _str_prop(routing),
@@ -141,7 +142,7 @@ def main() -> int:
         {
             "artifactType": "model-artifact",
             "name": artifact_name,
-            "uri": s3_uri,
+            "uri": published_uri,
             "modelFormatName": "safetensors",
             "customProperties": props,
         },
@@ -156,7 +157,7 @@ def main() -> int:
             {
                 "registered_model_id": rm_id,
                 "model_version_id": mv_id,
-                "uri": s3_uri,
+                "uri": published_uri,
             }
         )
     )
