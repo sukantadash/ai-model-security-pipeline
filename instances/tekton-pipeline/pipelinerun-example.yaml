@@ -32,7 +32,7 @@ spec:
     - name: git-url
       value: https://github.com/sukantadash/ai-model-security-pipeline.git
     - name: git-revision
-      value: cluster-install
+      value: main
     - name: model-sandbox-path
       value: instances/model-sandbox/LLMInferenceService.yaml
     - name: serving-yaml

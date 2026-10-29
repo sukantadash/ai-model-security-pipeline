@@ -17,7 +17,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/sukantadash/ai-model-security-pipeline.git
-    targetRevision: cluster-install
+    targetRevision: main
     path: instances/model-test
     directory:
       include: qwen3-8b-fp8-verified.yaml

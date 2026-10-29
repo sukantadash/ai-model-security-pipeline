@@ -1,16 +1,21 @@
 ---
 name: safe-git-push
 description: >-
-  Scans the git repo for secrets and live cluster values that should be
-  placeholders, remediates them, asks for review when anything changed, and
-  pushes only when the scan is clean. Use when the user asks to push, git push,
-  publish the repo, check if it is safe to push, or to validate secrets,
-  credentials, or placeholders before committing or pushing.
+  Scans the git repo for sensitive data that is unsafe to push (credentials,
+  tokens, private keys, tracked secret files), remediates when possible, asks
+  for review when anything changed, and pushes only when the scan is clean. Use
+  when the user asks to push, git push, publish the repo, check if it is safe
+  to push, or to validate secrets before committing or pushing.
 ---
 
 # Safe git push
 
-Validate tracked (and staged) files for **sensitive information** and for **live values that should be placeholders**. Take action on findings. **If you changed anything, stop and ask for review. If the scan is clean, push.**
+Validate tracked (and staged) files for **sensitive information** only (live
+credentials, tokens, private keys, dockerconfig auth, secret files that must
+stay gitignored). Do **not** enforce cluster-domain placeholders or require
+`CHANGE_ME_*` / `REPLACE_WITH_*` tokens in tracked files.
+
+Take action on findings. **If you changed anything, stop and ask for review. If the scan is clean, push.**
 
 Never print secret values, tokens, passwords, or dockerconfig `auth` fields. Report path, kind, and line only.
 
@@ -44,16 +49,15 @@ Also apply [reference.md](reference.md) when it exists in this repo.
 
 Read `git status`, `git diff`, and `git diff --cached`. Confirm `.gitignore` still lists local secret files. Do not `git add -f` gitignored secrets.
 
-Exit `0` / `"ok": true` means no blocking findings. `"placeholder_ok"` and `"info"` (local gitignored secrets) are expected — they do **not** block push.
+Exit `0` / `"ok": true` means no blocking findings. `"info"` (local gitignored secrets) does **not** block push.
 
 ### 2. Take action on blocking findings
 
 | `fix` / kind | Action |
 |--------------|--------|
-| `replace_fqdn` | Replace the live public cluster/lab hostname with `REPLACE_WITH_CLUSTER_APPS_DOMAIN`. Do not invent a real FQDN. |
-| `restore_placeholder` | Restore the expected placeholder token from [reference.md](reference.md) / `patterns.json` or from `*.template`. Do not invent a password. |
 | `unstage_and_gitignore` | `git restore --staged -- <file>` and keep it in `.gitignore`. |
 | `gitignore` | Add the filename to `.gitignore`. Do not commit the secret file. |
+| `restore_placeholder` / filled secret | Restore a non-secret placeholder or remove the live value; do not invent a real password. |
 | token / private key / no `fix` | Do not guess. Quote path+line, ask the user how to handle it. Do not push. |
 
 Never commit live credentials “just this once”. Never skip hooks.
@@ -85,5 +89,6 @@ If push fails (auth, no remote, rejected), report the error. Do not rewrite hist
 
 - Print or echo secret values
 - `git add -f` `quay-secret.yaml`, `minio-s3-secret.yaml`, `.env`, or kubeconfigs
-- Treat `CHANGE_ME_*`, `REPLACE_WITH_*`, or `<base64(...)>` in tracked templates as failures
-- Push after you just rewrote placeholders without user review
+- Treat intentional template placeholders (`CHANGE_ME_*`, `REPLACE_WITH_*`, `<base64(...)>`) as secrets
+- Block push solely because a lab/cluster FQDN or non-secret placeholder is present
+- Push after you just rewrote secrets without user review
